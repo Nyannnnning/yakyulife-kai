@@ -126,7 +126,7 @@ function dposReview(cont){
     f:()=>{ S.dpos=p; card('info','守位調整',`球團季末評估後，新球季改守 <b class="hl">${DPN[p]}</b>。`); cont(); }}));
   choose(`守位會議：教練團認為你的守備已撐不住 ${DPN[S.dpos]}（${LV[S.lv].n}標準）`,opts);
 }
-const APP_VER='v1.6.1';
+const APP_VER='v1.6.2';
 const TEAM_COLOR={
   /* 中職 */
   '兄弟巨象':'#ffd800','府城雄獅':'#ff7f00','北城赤龍':'#c8102e','首都猛虎':'#1a7a3a','華報飛鷹':'#7a263a','中州棕熊':'#6f4e37','中州公牛':'#264653','海灣巨鯨':'#246bce',
@@ -184,10 +184,13 @@ const RIVAL_TEAMS=['北都烈陽','中州金剛','嘉南戰士','南方雷霆'];
 function cpblTeamsForYear(y){
   if(y<=1992)return ['兄弟巨象','府城雄獅','北城赤龍','首都猛虎'];
   if(y<=1995)return ['兄弟巨象','府城雄獅','北城赤龍','首都猛虎','華報飛鷹','中州棕熊'];
-  if(y<=1997)return ['兄弟巨象','府城雄獅','北城赤龍','首都猛虎','華報飛鷹','中州公牛','海灣巨鯨'];
+  if(y===1996)return ['兄弟巨象','府城雄獅','北城赤龍','首都猛虎','華報飛鷹','中州公牛'];
+  if(y===1997)return ['兄弟巨象','府城雄獅','北城赤龍','首都猛虎','華報飛鷹','中州公牛','海灣巨鯨'];
   if(y===1998)return ['兄弟巨象','府城雄獅','北城赤龍','首都猛虎','中州公牛','海灣巨鯨'];
   if(y===1999)return ['兄弟巨象','府城雄獅','北城赤龍','首都猛虎','中州公牛','海灣巨鯨'];
   if(y<=2002)return ['兄弟巨象','府城雄獅','中州公牛','海灣巨鯨'];
+  if(y<=2008)return ['兄弟巨象','府城雄獅','中州公牛','海灣巨鯨','北都烈陽','中州金剛'];
+  if(y<=2012)return ['兄弟巨象','府城雄獅','中州公牛','桃園金剛'];
   if(y<=2020)return ['兄弟巨象','府城雄獅','桃園金剛','新北騎士'];
   if(y<=2023)return ['兄弟巨象','府城雄獅','桃園金剛','新北騎士','台北恐龍'];
   return CPBL_TEAMS.slice();
@@ -207,7 +210,7 @@ const LV={
  MLB:{n:'大聯盟',par:59,min:56,g:162,org:'MiLB',top:'MLB'},
 };
 function levelGames(lv,y){
-  if(lv==='CPBL1'&&y<2000)return y<=1994?90:y<=1996?100:y===1997?96:105;
+  if(lv==='CPBL1')return y<=1994?90:y<=1996?100:y===1997?96:y<=1999?105:y<=2002?90:y<=2008?100:120;
   if(lv==='CPBL2'&&y<2006)return 60; /* 正式二軍成立前，以預備隊／練習賽規模呈現 */
   return LV[lv].g;
 }
@@ -958,6 +961,8 @@ function usPathOpen(){ return !!(S&&(S.year>=1999||(S.era&&S.era.usDoor))); }
 
 /* ---------- 咖位與年代成就：你說同一句話，聯盟不一定用同一種音量聽 ---------- */
 const ACHIEVEMENTS={
+  barcelona_youngest:{name:'十八歲的第二十人',desc:'十八歲越級擠進巴塞隆納最後名單；舞台很大，位置很小，但名字已經寫在銀牌旁邊。',league:'ALL',pts:160},
+  beef_noodle_return:{name:'一碗投回美國',desc:'大傷後回家賣牛肉麵，喝完自己的湯忽然通體舒暢，最後又站回美國職棒的投手丘。',league:'ALL',pts:220},
   jp_arrival:{name:'助人不是助拳',desc:'在日本不只交出成績，也讓休息室真正叫出你的名字。',league:'NPB',pts:120},
   jp_fa_voice:{name:'自己的名字，自己簽',desc:'在自由球員制度起步時，替球員選擇權留下聲音。',league:'NPB',pts:180},
   jp_bridge:{name:'太平洋的風',desc:'在旅美先驅打開窄門時，讓自己的資料也跟著過海。',league:'NPB',pts:180},
@@ -1197,14 +1202,27 @@ function historyReckoning1998(done){
 }
 function historyCollapse1999(done){
   const collapse=S.stage==='PRO'&&S.org==='CPBL'&&['北城赤龍','首都猛虎'].includes(S.orgTeam);
-  card('bad','1999｜創始球隊熄燈','兩支開國元老走到盡頭。有人把最後一件球衣折好帶走；同一個冬天，太平洋另一端第一次出現真正能走的窄門。');
+  card('bad','1999｜創始球隊的最後一季','兩支開國元老已經撐到牆邊。有人開始把紀念物收進紙箱；同一個冬天，太平洋另一端也出現一扇終於能讓這一代接著走的窄門。');
   const finish=()=>{S.era.usDoor=true;done();};
-  if(collapse){
-    choose(`${S.orgTeam} 宣布解散，你的合約也跟著失去球隊。`,[
-      {t:'留在台灣，接受其他球隊安置',main:true,s:'轉往仍在營運的球隊',f:()=>{const nt=pick(cpblTeamsForYear(2000));S.orgTeam=nt;S.teamYears=0;S.era.rivalLeague=false;tlNote(2,'球隊解散後轉至 '+nt);card('info','換一只置物櫃',`舊球衣留在紙箱裡。明年，你會穿著 <b class="hl">${nt}</b> 繼續打。`);board(1);finish();}},
-      {t:'把資料寄往美國',warn:true,s:'D20 洞察 DC 14｜成功可能獲得小聯盟測試機會',f:()=>d20Check({title:'太平洋另一端的回信',ability:'insight',dc:14,bonus:ovr()>=48?2:0,stakes:'錄影帶、剪報、幾張球探報告。信封丟進郵筒後，只剩等待。'},r=>{if(r.success&&ovr()>=41){signTo('MiLB',ovr()>=48?'A1':'R',null,3,1);S.era.rivalLeague=false;card('gold','回信來了','不是大聯盟保證書，只是一張從最底層開始的車票。你簽了。');}else{const nt=pick(cpblTeamsForYear(2000));S.orgTeam=nt;S.teamYears=0;card('info','沒有合約','美國沒有回信。你先在 <b class="hl">'+nt+'</b> 留下來，把明年的球打好。');}finish();})}]); return;
+  if(S.stage==='PRO'&&S.org==='MiLB'){
+    S.era.usDoor=true;
+    card('info','你已經在門的另一側','故鄉的兩支老球隊熄燈時，你正在美國整理下一場客場行李。那扇窄門對別人剛打開，對你卻已經是每天都得守住的工作。');
+    choose('',[{t:'▸ 打一通電話回家',main:true,s:'沉著 +1',f:()=>{improveMind('nerve',1);done();}}]); return;
   }
-  d20Check({title:'第一扇旅美窄門',ability:'insight',dc:13,bonus:ovr()>=48?2:0,stakes:'球探第一次不只問「你想不想」，而是問「你的資料能不能留下」。'},r=>{if(r.success){S.pool+=r.strong?4:2;card('good','資料被帶走了',`沒有承諾。但你的名字跟著球探上了飛機。季末能力點 <b class="up">+${r.strong?4:2}</b>。`);}else card('info','門開了，還沒輪到你','這次球探帶走的是別人的資料。至少從今天起，那條路確實存在。');finish();});
+  if(collapse){
+    choose(`${S.orgTeam} 沒人敢保證還有明年；眼前這一季，你仍穿著原來的球衣。`,[
+      {t:'把最後一季打完，季末接受安置',main:true,s:'1999 成績仍記在母隊｜球季結束後轉隊',f:()=>{S.era.collapseChoice='stay';finish();}},
+      {t:'把最後一季打完，同時把資料寄往美國',warn:true,s:'1999 成績仍記在母隊｜季末 D20 爭取小聯盟機會',f:()=>{S.era.collapseChoice='us';finish();}}]); return;
+  }
+  d20Check({title:'這一代的旅美窄門',ability:'insight',dc:13,bonus:ovr()>=48?2:0,stakes:'球探不再只問「你想不想」，而是問「你的資料能不能留下，下一次能不能再看」。'},r=>{if(r.success){S.pool+=r.strong?4:2;card('good','資料被帶走了',`沒有承諾。但你的名字跟著球探上了飛機。季末能力點 <b class="up">+${r.strong?4:2}</b>。`);}else card('info','門開了，還沒輪到你','這次球探帶走的是別人的資料。至少從今天起，那條路確實存在。');finish();});
+}
+function resolveCollapse1999(done){
+  const choice=S.era.collapseChoice;if(!choice){done();return;}
+  S.era.collapseChoice=null;const old=S.orgTeam;
+  card('bad','最後一場打完了',`${old} 的球衣沒有下一季。你把最後一件留在自己的衣架上，合約則和球隊一起走到句點。`);
+  const stay=()=>{const nt=pick(cpblTeamsForYear(2000));S.orgTeam=nt;S.teamYears=0;S.era.rivalLeague=false;tlNote(2,'球隊解散後轉至 '+nt);card('info','換一只置物櫃',`1999 的成績留在 ${old}。明年，你會穿著 <b class="hl">${nt}</b> 繼續打。`);board(1);choose('',[{t:'▸ 前往新球隊',main:true,f:done}]);};
+  if(choice==='stay'){stay();return;}
+  d20Check({title:'太平洋另一端的回信',ability:'insight',dc:14,bonus:ovr()>=48?2:0,stakes:'最後一季的錄影帶、剪報、幾張球探報告。球隊熄燈後，信封終於有了回音。'},r=>{if(r.success&&ovr()>=41){signTo('MiLB',ovr()>=48?'A1':'R',null,3,1);S.era.rivalLeague=false;card('gold','回信來了','不是大聯盟保證書，只是一張從最底層開始的車票。你簽了。');choose('',[{t:'▸ 飛往美國',main:true,f:done}]);}else{card('info','沒有美國合約','回信沒有變成合約。台灣還有球隊願意留一只置物櫃給你。');stay();}});
 }
 
 /* ---------- 海外年代篇：史實是風向，選擇才是球員留下的痕跡 ---------- */
@@ -1319,12 +1337,12 @@ function usArrival(p,done){
   ]);
 }
 function usStrike1994(p,done){
-  S.era.us94Stop=true;
-  const top=LV[S.lv]&&LV[S.lv].top;
-  card('bad','1994｜沒有十月',`八月，球員停下來。球季、季後賽、世界大賽一起消失。${top?'你的置物櫃還在大聯盟球場裡，門卻鎖了。':'球團暗示小聯盟球員：明年也許有人可以穿過那扇鎖住的門。'}<br>${standingLine(p)}`);
-  choose('沒有比賽的日子，你把名字放在哪一邊？',[
-    {t:'跟球員站在一起，不跨線',main:true,s:'本季出賽量大減｜D20 沉著決定你能否撐過停擺',f:()=>d20Check({title:'停擺中的立場',ability:'nerve',dc:top?13+p.index:14,bonus:p.bonus,edge:p.edge,stakes:top?'記者每天問你何時回去。真正的答案不只屬於你。':'那個位置可能是一生唯一的大聯盟機會。你得親手說不要。'},r=>{if(r.success){S.dev.trust+=3;unlockAchievement('us_union',top?'你沒有替整場談判贏球，但你沒有讓隊友少一個人。':'你錯過一次假門，替自己留下真正進門的資格。');}else{S.dev.trust--;card('bad','冬天比想像中長','你守住立場，卻失去訓練場和薪水。明年要重新證明自己還能打。');}done();})},
-    {t:top?'公開要求雙方立刻談判':'接受替補球員的暗示',warn:!top,s:top?'聯盟門面影響力較大｜D20 洞察':'收入 +100 萬｜隊友信任崩落',f:()=>{if(top){d20Check({title:'把麥克風轉向談判桌',ability:'insight',dc:15,bonus:p.bonus,edge:p.edge,stakes:'你不能替任何一方簽字，只能逼他們記得看台也有人。'},r=>{if(r.success){S.dev.trust+=2;unlockAchievement('us_union','你的發言沒有結束停擺，卻讓球迷知道球員不是數字。');}else card('info','兩邊都不滿意','老闆說你不懂生意，隊友說你太急。這也許正表示你站在中間。');done();});}else{S.salary+=100;S.dev.trust=Math.max(0,S.dev.trust-5);card('bad','那件球衣不合身','你拿到錢，也拿到一個整個休息室都不願叫的稱呼。');done();}}},
+  const top=!!(LV[S.lv]&&LV[S.lv].top);
+  S.era.us94Stop=top;
+  card('bad','1994｜沒有十月',top?`八月，球員停下來。大聯盟球季、季後賽、世界大賽一起消失；你的置物櫃還在球場裡，門卻鎖了。<br>${standingLine(p)}`:`大聯盟八月停擺，小聯盟球季仍照常打。真正讓休息室安靜下來的，是球團暗示：如果明年還談不攏，春訓會需要一批「替補球員」。<br>${standingLine(p)}`);
+  choose(top?'沒有比賽的日子，你把名字放在哪一邊？':'小聯盟還有比賽；明年春訓那件球衣，你穿不穿？',[
+    {t:'跟球員站在一起，不跨線',main:true,s:top?'大聯盟本季出賽量降至約 70%｜D20 沉著':'拒絕明年春訓替補邀請｜D20 沉著',f:()=>d20Check({title:'停擺中的立場',ability:'nerve',dc:top?13+p.index:14,bonus:p.bonus,edge:p.edge,stakes:top?'記者每天問你何時回去。真正的答案不只屬於你。':'小聯盟球照打，眼前的名單也還在；你拒絕的是明年那條看似更快的假門。'},r=>{if(r.success){S.dev.trust+=3;unlockAchievement('us_union',top?'你沒有替整場談判贏球，但你沒有讓隊友少一個人。':'你拒絕一件不屬於自己的大聯盟球衣，替自己留下真正進門的資格。');}else{S.dev.trust--;card('bad','冬天比想像中長','你守住立場，卻失去一部分訓練資源。明年要重新證明自己還能打。');}done();})},
+    {t:top?'公開要求雙方立刻談判':'收下明年春訓的替補合約',warn:!top,s:top?'聯盟門面影響力較大｜D20 洞察':'預付金 +100 萬｜隊友信任崩落',f:()=>{if(top){d20Check({title:'把麥克風轉向談判桌',ability:'insight',dc:15,bonus:p.bonus,edge:p.edge,stakes:'你不能替任何一方簽字，只能逼他們記得看台也有人。'},r=>{if(r.success){S.dev.trust+=2;unlockAchievement('us_union','你的發言沒有結束停擺，卻讓球迷知道球員不是數字。');}else card('info','兩邊都不滿意','老闆說你不懂生意，隊友說你太急。這也許正表示你站在中間。');done();});}else{S.salary+=100;S.dev.trust=Math.max(0,S.dev.trust-5);card('bad','那件球衣不合身','你收下明年春訓的預付金，也拿到一個整個休息室都不願叫的稱呼。');done();}}},
     {t:'回台灣維持訓練，不公開表態',s:'疲勞 −8｜失去本事件成就',f:()=>{S.dev.fatigue=Math.max(0,S.dev.fatigue-8);card('info','把秋天留在電視外','你每天照常跑步。只是這一次，沒有比分可以證明等待值不值得。');done();}}
   ]);
 }
@@ -1385,7 +1403,7 @@ function usTesting2003(p,done){
     ]);return;
   }
   choose('抽屜裡那只空瓶，終於等到你。',[
-    {t:'主動向球員會與醫療人員完整交代',main:true,s:'停止使用｜D20 洞察決定處分與保護',f:()=>d20Check({title:'把名字寫上去',ability:'insight',dc:13+O.evidence,bonus:p.bonus,edge:p.edge,stakes:'承認不會抹掉數字，也不保證大家原諒。它只保證你從今天開始不再說謊。'},r=>{O.ped=false;O.disclosed=true;if(r.success){S.era.suspension=.2;S.dev.trust+=1;unlockAchievement('us_truth','你失去一段球季，保住後面還能用自己的名字。');}else{S.era.suspension=.55;S.dev.trust-=2;card('bad','誠實來得太晚','聯盟仍決定重罰。至少下一次站上場，你不必再躲那張表。');}done();})},
+    {t:'主動向球員會與醫療人員完整交代',main:true,s:'停止使用｜2003 匿名調查不會直接停賽',f:()=>d20Check({title:'把名字寫上去',ability:'insight',dc:13+O.evidence,bonus:p.bonus,edge:p.edge,stakes:'這張調查表原本匿名、也不帶處分。你要處理的是身體和身邊知道秘密的人，不是拿匿名結果換一張禁賽單。'},r=>{O.ped=false;O.disclosed=true;if(r.success){O.evidence=Math.max(0,O.evidence-1);S.dev.trust+=1;unlockAchievement('us_truth','沒有停賽公告。只有醫療室裡那份從今天開始算的治療紀錄。');}else{S.dev.fatigue=clamp(S.dev.fatigue+5,0,50);S.dev.trust-=1;card('bad','匿名不等於沒有人知道','聯盟不能拿這次調查直接處分你，但經紀人和供應者都還握著話。你停用了，影子沒有一起停。');}done();})},
     {t:'立刻停用，但不告訴任何人',s:'能力回落 2｜證據仍在',f:()=>{O.ped=false;addAb(S.pos==='P'?'vel':'pow',-2);O.evidence++;card('info','把瓶子丟了，影子還在','身體慢慢回到原來速度。紀錄和認得你的人，不會一起消失。');done();}},
     {t:'繼續，賭檢測不會抽到你',warn:true,s:'能力 +2｜2004 曝光風險大增',f:()=>{O.evidence+=2;addAb(S.pos==='P'?'vel':'pow',2);card('bad','再快一年','你把雷聲當成很遠。其實它只是在等名單。');done();}}
   ]);
@@ -1402,10 +1420,10 @@ function usHits2004(p,done){
     ]);
   };
   if(O.ped&&!O.disclosed){
-    card('bad','2004｜名單抽到了你的背號',`強制藥檢開始帶著處分進場。工作人員站在門口，手上的表沒有任何表情。`);
+    card('bad','2004｜名單抽到了你的背號',`記名強制藥檢開始進場。第一次陽性會進入治療與追蹤，不公開、也不停賽；再度陽性或違反治療計畫，才會有十五天等逐級處分。工作人員站在門口，手上的表沒有任何表情。`);
     choose('最後一刻，你怎麼面對？',[
-      {t:'承認並配合後續調查',main:true,s:'本季停賽 50%｜可停止黑暗路線',f:()=>{O.ped=false;O.disclosed=true;S.era.suspension=.5;S.dev.trust-=2;unlockAchievement('us_truth','不是漂亮的結局，但謊話到這裡為止。');contact();}},
-      {t:'否認，要求重新檢測',warn:true,s:'D20 沉著｜證據越多越難',f:()=>d20Check({title:'藥檢申訴',ability:'nerve',dc:15+O.evidence,bonus:p.bonus,edge:p.edge,stakes:'這不是骰子決定你有沒有做過，只決定剩下的證據能不能把話拆穿。'},r=>{if(r.success){S.era.suspension=.25;card('info','處分暫時縮短','程序出現瑕疵，你爭回一些比賽。抽屜裡的事沒有因此變乾淨。');}else{S.era.suspension=1;S.dev.trust=Math.max(0,S.dev.trust-5);card('bad','整季從名單消失','檢測、證詞與紀錄對上了。這一年只剩下空白。');}contact();})}
+      {t:'承認並配合治療計畫',main:true,s:'首次陽性不禁賽｜停止使用並留下治療紀錄',f:()=>{O.ped=false;O.disclosed=true;S.dev.trust-=1;unlockAchievement('us_truth','沒有公開處分，也沒有漂亮的洗白；你只是終於接受治療，不再把身體交給抽屜。');contact();}},
+      {t:'否認，要求重新檢測',warn:true,s:'D20 沉著｜首次陽性不禁賽；累犯失敗可能停 15 天',f:()=>d20Check({title:'藥檢申訴',ability:'nerve',dc:15+O.evidence,bonus:p.bonus,edge:p.edge,stakes:'這不是骰子決定你有沒有做過，只決定程序與舊紀錄能不能拆穿這次說法。'},r=>{const repeat=(O.years||0)>=2||O.evidence>=4;O.ped=false;if(r.success){O.evidence++;card('info','沒有禁賽，只有更密的檢測','程序沒有把你公開釘上名單；你仍被放進治療與追蹤，下一次不會再只是談話。');}else if(repeat){O.disclosed=true;S.era.suspension=.1;S.dev.trust=Math.max(0,S.dev.trust-3);card('bad','第二次的十五天','舊紀錄與這次結果對上。這不是整季消失，而是當年制度對再度陽性的十五天處分。');}else{O.disclosed=true;S.dev.trust=Math.max(0,S.dev.trust-2);card('bad','第一次陽性','申訴失敗，你被放進保密治療與追蹤；依當年規則，第一次不會直接停賽。');}contact();})}
     ]);
   }else contact();
 }
@@ -1475,8 +1493,8 @@ function startYear(){ stepQ=[phaseHistory,phaseOverseasHistory,phasePre,phaseMid
 function phasePre(){
   board(0); S.tmpInj=0; S.seasonFactor=1; S.skipMid=false; S.prevD=S.lastD||0; S.lastD=0; /* 先保留上季 d 供投手定位判定 */
   ensureCampaignState();
-  S.era.standingD=S.prevD; S.era.declineNow=0;
-  if(S.era.us94Stop&&S.year===1994){S.seasonFactor=.65;card('bad','停擺球季','八月以後的賽程被整片撕掉。本季最多只剩 <b class="dn">65%</b> 的出賽量，也不會有季後賽。');}
+  S.era.standingD=S.prevD; S.era.declineNow=0; S.era.justFinishedRehab=false;
+  if(S.era.us94Stop&&S.year===1994){S.seasonFactor=.7;card('bad','停擺球季','八月以後的大聯盟賽程被整片撕掉。本季最多只剩約 <b class="dn">70%</b> 的出賽量，也不會有季後賽。');}
   if(S.era.suspension>0){
     if(S.era.suspension>=1){ S.skipMid=true; S.seasonFactor=0; card('bad','禁賽處分','球衣還掛在置物櫃，名字卻不在登錄名單。本季確定無法出賽。'); }
     else { S.seasonFactor=Math.min(S.seasonFactor,1-S.era.suspension); card('bad','停賽處分',`處分仍在，本季最多只剩 <b class="dn">${Math.round(S.seasonFactor*100)}%</b> 的出賽量。`); }
@@ -1488,7 +1506,7 @@ function phasePre(){
     S.era.declineNow=dec;
     POS_AB[S.pos].forEach(k=>S.ab[k]=clamp(S.ab[k]-dec,1,80));
     card('bad','歲月不饒人',`${declAge>=35?'第二階段（逐年加劇）':'第一階段'}衰退：所有能力 <b class="dn">−${dec}</b>${S.traits.disc?'（自律狂：生涯延後兩年）':''}。訓練加點照常，但身體回不去了。`); board(0); }
-  if(S.rehab>0){ S.rehab--; S.skipMid=true; S.seasonFactor=0;
+  if(S.rehab>0){ const finalRehab=S.rehab===1; S.rehab--; S.skipMid=true; S.seasonFactor=0; S.era.justFinishedRehab=finalRehab;
     card('bad','復健年',`大傷尚未痊癒，本季確定<b class="dn">全年報銷</b>，只能在復健室度過。（擲骰減為 2 顆）`);
     const dummySt = {G:0,PA:0,AB:0,H:0,HR:0,RBI:0,SB:0,BB:0,W:0,L:0,SV:0,HLD:0,IP:0,SO:0,ER:0,avg:0,era:0,WHIP:0,DEF:0};
     S.log.push({y:S.year,age:S.age,tm:S.stage==='PRO'?S.teamName():(S.team||stageLabel()),line:'復健年・全年報銷', inj: true, st: S.stage==='PRO'?dummySt:null}); }
@@ -2248,58 +2266,95 @@ function awards(bucket,st){
 }
 function intlEventForYear(y){
   const fixed={
-    1992:{name:'巴塞隆納奧運',short:'奧運',amateur:true,req:30,dc:11},
-    1994:{name:'廣島亞運',short:'亞運',amateur:true,req:36,dc:12},
+    1992:{name:'巴塞隆納奧運',short:'奧運',amateur:true,amateurOnly:true,req:40,dc:14},
+    1994:{name:'廣島亞運',short:'亞運',amateur:true,amateurOnly:true,req:36,dc:12},
     1998:{name:'曼谷亞運',short:'亞運',amateur:true,req:40,dc:13},
     2001:{name:'世界盃棒球賽',short:'世界盃',amateur:true,req:43,dc:13},
     2002:{name:'釜山亞運',short:'亞運',amateur:true,req:44,dc:13},
-    2004:{name:'雅典奧運',short:'奧運',amateur:false,req:46,dc:13},
-    2006:{name:'世界棒球經典賽',short:'經典賽',amateur:false,req:48,dc:13},
-    2008:{name:'北京奧運',short:'奧運',amateur:false,req:48,dc:13},
-    2009:{name:'世界棒球經典賽',short:'經典賽',amateur:false,req:50,dc:13},
-    2013:{name:'世界棒球經典賽',short:'經典賽',amateur:false,req:50,dc:13},
-    2015:{name:'世界12強賽',short:'12強',amateur:false,req:50,dc:13,p12:true},
-    2017:{name:'世界棒球經典賽',short:'經典賽',amateur:false,req:50,dc:13},
-    2019:{name:'世界12強賽',short:'12強',amateur:false,req:50,dc:13,p12:true},
-    2023:{name:'世界棒球經典賽',short:'經典賽',amateur:false,req:50,dc:13},
-    2024:{name:'世界12強賽',short:'12強',amateur:false,req:50,dc:13,p12:true},
-    2026:{name:'世界棒球經典賽',short:'經典賽',amateur:false,req:50,dc:13}
+    2004:{name:'雅典奧運',short:'奧運',amateur:true,req:46,dc:13},
+    2006:{name:'世界棒球經典賽',short:'經典賽',amateur:true,req:48,dc:13},
+    2008:{name:'北京奧運',short:'奧運',amateur:true,req:48,dc:13},
+    2009:{name:'世界棒球經典賽',short:'經典賽',amateur:true,req:50,dc:13},
+    2013:{name:'世界棒球經典賽',short:'經典賽',amateur:true,req:50,dc:13},
+    2015:{name:'世界12強賽',short:'12強',amateur:true,req:50,dc:13,p12:true},
+    2017:{name:'世界棒球經典賽',short:'經典賽',amateur:true,req:50,dc:13},
+    2019:{name:'世界12強賽',short:'12強',amateur:true,req:50,dc:13,p12:true},
+    2023:{name:'世界棒球經典賽',short:'經典賽',amateur:true,req:50,dc:13},
+    2024:{name:'世界12強賽',short:'12強',amateur:true,req:50,dc:13,p12:true},
+    2026:{name:'世界棒球經典賽',short:'經典賽',amateur:true,req:50,dc:13}
   };
   if(fixed[y])return fixed[y];
-  if(y>2026&&(y-2026)%4===0)return {name:'世界棒球經典賽',short:'經典賽',amateur:false,req:50,dc:13};
-  if(y>2024&&(y-2024)%4===0)return {name:'世界12強賽',short:'12強',amateur:false,req:50,dc:13,p12:true};
+  if(y>2026&&(y-2026)%4===0)return {name:'世界棒球經典賽',short:'經典賽',amateur:true,req:50,dc:13};
+  if(y>2024&&(y-2024)%4===0)return {name:'世界12強賽',short:'12強',amateur:true,req:50,dc:13,p12:true};
   return null;
+}
+function intlSelectionProfile(ev){
+  const rating=ovr();
+  const youngBarcelona=S.year===1992&&S.stage==='HS'&&S.age<=18;
+  if(youngBarcelona){
+    const champion=(S.honors||[]).some(h=>/^199[0-2] .*冠軍$/.test(h));
+    const eliteResume=!!(S.traits.genius||champion||(S.dev.trust||0)>=4||rating>=48);
+    const eligible=rating>=44&&eliteResume;
+    return {rating,youngBarcelona:true,eligible,training:!eligible&&rating>=36,
+      role:eligible?'fringe':rating>=36?'training':'out',req:44,dc:15,eliteResume};
+  }
+  return {rating,youngBarcelona:false,eligible:rating>=ev.req,training:false,
+    role:rating<ev.req+5?'reserve':'core',req:ev.req,dc:ev.dc,eliteResume:true};
 }
 function maybeIntl(done){
   ensureCampaignState(); const ev=intlEventForYear(S.year);
-  if(!ev||(ev.p12&&S.lv==='MLB')||(S.stage!=='PRO'&&!ev.amateur)||ovr()<ev.req||S.seasonFactor<0.5||S.rehab>0||S.skipMid){ done(); return; }
+  if(!ev||(ev.p12&&S.lv==='MLB')||(S.stage!=='PRO'&&!ev.amateur)||S.seasonFactor<0.5||S.rehab>0||S.skipMid){ done(); return; }
+  if(ev.amateurOnly&&S.stage==='PRO'){
+    S.era.intlEdge=0;
+    card('info',`${ev.name}｜業餘國家隊年代`,`那一屆的正式名單仍只向業餘球員開放。你已經穿上職業球衣，只能從電視前看著昔日隊友出發；直到 1998 年，職業球員才真正走進這類國際賽名單。`);
+    done(); return;
+  }
+  const profile=intlSelectionProfile(ev);
+  if(!profile.eligible){
+    S.era.intlEdge=0;
+    if(profile.youngBarcelona){
+      S.era.barcelonaRole=profile.role;
+      if(profile.training){
+        S.dev.trust=clamp((S.dev.trust||0)+1,-5,10);
+        const why=profile.rating<44?'球探願意看你的下一年，還不願意把奧運名額押在今年。':'球威已經到了，履歷上卻還少一場能讓選訓委員閉嘴的大賽。';
+        card('info','巴塞隆納培訓名單',`你被叫去替成棒代表隊陪練。${why}<br><span class="sub">綜合能力 ${profile.rating}｜十八歲越級門檻 44＋頂尖履歷｜教練信任 +1</span><br>你沒有取得正式國手資格，也不會隨隊領取奧運獎牌。`);
+      }else{
+        card('info','名單還在山的另一頭',`電視裡公布了巴塞隆納培訓名單，你的名字沒有出現。十八歲不是不能去，只是那必須是全島幾年才出一個的例外。<br><span class="sub">綜合能力 ${profile.rating}｜陪練觀察門檻 36</span>`);
+      }
+    }
+    done(); return;
+  }
   const selectionScore=clamp(Math.round(ovr()+20+Math.min(8,S.dev.trust||0)),1,80);
   const edge=clamp((S.era.intlEdge||0)+(S.traits.clutch?1:0),-1,1); S.era.intlEdge=0;
-  d20Check({title:`${ev.name}最終名單`,label:'競技狀態',score:selectionScore,dc:ev.dc,edge,
-    stakes:S.stage==='PRO'?'教練團把最後兩個名字留到會議最末。你的近況，現在要被放上秤。':'那個年代，業餘球員也能從校隊一路走進國家隊。最後一張名單，就差一個名字。'},sel=>{
+  d20Check({title:`${ev.name}最終名單`,label:'競技狀態',score:selectionScore,dc:profile.dc,edge,
+    stakes:profile.youngBarcelona?'十八歲的高中生要搶成棒隊最後一席。教練看的是足以越級的球威，不是潛力兩個字。':S.stage==='PRO'?'教練團把最後兩個名字留到會議最末。你的近況，現在要被放上秤。':'那個年代，業餘球員也能從校隊一路走進國家隊。最後一張名單，就差一個名字。'},sel=>{
     if(!sel.success){ card('info','名單公布','你從第一行看到最後一行。沒有自己的名字。難受是真的，明天還是得練球。'); done(); return; }
+    const fringe=profile.role==='fringe';
     choose(`中華隊徵召 · ${ev.name}`,[
-      {t:'披上國家隊戰袍',main:true,s:'依成績獲得能力點｜下季受傷機率 +10%',f:()=>{
+      {t:'披上國家隊戰袍',main:true,s:fringe?'名單末席｜低張力出賽｜能力點上限 2｜下季受傷機率 +3%':'依成績獲得能力點｜下季受傷機率 +10%',f:()=>{
+        if(profile.youngBarcelona)S.era.barcelonaRole='fringe';
         const b=clamp(Math.round((ovr()-ev.req)*0.35)+(sel.strong?3:0),0,10), r=R()*100+b;
         const i=S.year===1992?1:(r>=96?0:r>=88?1:r>=79?2:r>=46?3:4); /* 巴塞隆納銀牌是時代錨點，不由個人改寫 */
         const rk=['冠軍','亞軍','季軍','複賽止步','預賽出局'][i], pts=[6,5,4,2,1][i];
-        let gpts=pts; if(S.traits.intlace)gpts=Math.max(pts,2);
-        S.pool+=gpts; S.injNext=S.traits.intlace?0:10; S.intlCount++;
+        let gpts=fringe?Math.min(2,pts):pts; if(S.traits.intlace)gpts=Math.max(gpts,2);
+        S.pool+=gpts; S.injNext=S.traits.intlace?0:fringe?3:10; S.intlCount++;
+        if(fringe&&S.age===18)unlockAchievement('barcelona_youngest','你不是球隊的主角，卻成了那屆最年輕的一個名字。');
         if(!S.traits.taiwan&&S.intlCount>5){ S.traits.taiwan=true;
           card('gold','隱藏稱號：Team Taiwan','永遠把國家榮耀放在比職涯更高的位子，台灣球迷的心中永遠有一幅畫：你在球場上向全場比劃著胸口，那是你心中最榮耀的地方。'); board(1); }
         { const a=S.ab, par=ev.req; const IS=S.intlStat;
           if(S.pos==='P'){ const dd=(a.vel+a.ctl+a.brk)/3-par; let g,ip;
-            if(isSP()){g=ri(1,2);ip=+(g*(4.5+R()*2.5)).toFixed(1);}else{g=ri(3,6);ip=+(g*(0.8+R()*0.8)).toFixed(1);}
+            if(fringe){g=1;ip=2;}else if(isSP()){g=ri(1,2);ip=+(g*(4.5+R()*2.5)).toFixed(1);}else{g=ri(3,6);ip=+(g*(0.8+R()*0.8)).toFixed(1);}
             IS.IP=+(IS.IP+ip).toFixed(1);IS.G+=g;IS.SO+=Math.round(ip/9*clamp(7.5+dd*0.12,4,14));IS.ER+=Math.round(clamp(3.6-dd*0.16,0.8,8)*ip/9);
             if(i<=2&&chance(45))IS.W++;if(!isSP()&&chance(30))IS.SV++;
-          }else{const dd=(a.con*0.5+a.pow*0.2+a.eye*0.18+a.spd*0.12)-par-0.5,g=ri(5,8),pa=g*ri(3,4),ab=Math.round(pa*0.86);
+          }else{const dd=(a.con*0.5+a.pow*0.2+a.eye*0.18+a.spd*0.12)-par-0.5,g=fringe?ri(1,3):ri(5,8),pa=fringe?ri(1,4):g*ri(3,4),ab=Math.round(pa*0.86);
             IS.G+=g;IS.PA+=pa;IS.AB+=ab;const h=Math.round(ab*clamp(0.270+dd*0.006,0.15,0.5));IS.H+=h;const hr=Math.round(h*clamp(0.06+Math.max(0,a.pow-par)*0.006,0.03,0.28));IS.HR+=hr;IS.RBI+=Math.round(hr*2.1+h*0.35);}
         }
         if(i<=1)S.intlTop4=(S.intlTop4||0)+1;
         if(!S.traits.intlace&&S.intlCount>=3&&(S.intlTop4||0)>=2){S.traits.intlace=true;card('gold','隱藏屬性解鎖：國際賽之鬼','只要穿上 CT 球衣，你的痛覺就會消失——你是為大場面而生的男人。<b class="hl">國際賽不再增加受傷風險，且每次徵召能力點保底 +2</b>。');}
         if(i<=2)S.honors.push(`${S.year} ${ev.name}${rk}`);if(i===0)tlNote(3,ev.short+'冠軍');
-        let ex='';const mp=S.traits.clutch?2:1;if((i===0&&chance(30*mp))||(i===1&&chance(8*mp))){S.honors.push(`${S.year} ${ev.name}MVP`);ex='你被選為<b class="hl">賽會MVP</b>！';}
-        card(i<=1?'gold':'info',ev.name,`中華隊最終成績：<b class="hl">${rk}</b>。${ex}獲得能力點 <b class="hl">${gpts}</b> 點。${S.traits.intlace?'國家英雄不知何謂疲憊。':'國際賽的高強度消耗，讓下季受傷風險上升。'}`);done();}},
+        let ex='';const mp=S.traits.clutch?2:1;if(!fringe&&((i===0&&chance(30*mp))||(i===1&&chance(8*mp)))){S.honors.push(`${S.year} ${ev.name}MVP`);ex='你被選為<b class="hl">賽會MVP</b>！';}
+        const roleText=fringe?`你以 ${S.age} 歲的名單末席隨隊，只在低張力局面得到少量機會。`:'';
+        card(i<=1?'gold':'info',ev.name,`${roleText}中華隊最終成績：<b class="hl">${rk}</b>。${ex}獲得能力點 <b class="hl">${gpts}</b> 點。${S.traits.intlace?'國家英雄不知何謂疲憊。':fringe?'有限出賽仍留下疲勞，下季受傷風險小幅上升。':'國際賽的高強度消耗，讓下季受傷風險上升。'}`);done();}},
       {t:'婉拒徵召，留隊調整',warn:true,s:'保住身體，但錯過這一屆',f:done}]);
   });
 }
@@ -2333,6 +2388,34 @@ function phaseEnd(){
   else go();
 }
 /* ---------- 升降級與去向 ---------- */
+function maybeBeefNoodleReturn(done,force){
+  ensureCampaignState();
+  const hadUS=!!(S.org==='MiLB'||S.era.overseasArrival.US);
+  const eligible=S.pos==='P'&&S.stage==='PRO'&&S.age>=28&&S.era.justFinishedRehab&&
+    ((S.bigInj||0)>0||(S.tjCount||0)>0)&&hadUS&&!S.era.beefNoodleSeen;
+  if(!eligible||(!force&&!chance(3)))return false;
+  S.era.beefNoodleSeen=true;
+  card('info','休息室以外的工作','整整一年復健，球團仍只願意給你一句「再看看」。你回到家，把棒球包塞進牛肉麵店後面；切肉、熬湯、擦桌子，至少每件事都有確定的答案。');
+  choose('招牌掛上去以前，你要不要真的離開球場？',[
+    {t:'先把牛肉麵煮好，棒球以後再說',main:true,s:'超低機率搞笑路線｜手傷奇蹟復原｜重返美國職棒',f:()=>{
+      card('gold','老闆自己吃一碗','開店第三個月，打烊後你替自己盛了一大碗。第一口下去，背脊發熱；第二口下去，肩膀喀一聲；湯喝完，你整個人通體舒暢。你順手把空湯鍋往流理台一甩——球速看起來比復健前還快。');
+      S.tj=0;S.rehab=0;S.tmpInj=0;S.injNext=0;S.skipMid=false;
+      if(S.traits.glass)removeTrait('glass','玻璃人');
+      addAb('vel',5);addAb('brk',5);addAb('sta',3);
+      const arm=Math.round((S.ab.vel+S.ab.ctl+S.ab.brk+S.ab.sta)/4);
+      d20Check({title:'把湯勺換回球',label:'復活後手感',score:arm,dc:14,edge:1,stakes:'來吃麵的美國球探本來只想加辣。看見你把那口鍋甩出去，他把名片壓在帳單下面：「明年春訓，帶手套。也帶一包湯底。」'},r=>{
+        const lv=r.strong?'MLB':r.success?'A3':'A1';
+        signTo('MiLB',lv,null,r.strong?2:3,1);
+        S.era.usDoor=true;S.era.beefNoodleReturn=true;
+        unlockAchievement('beef_noodle_return',r.strong?'球探後來堅稱自己看的是手臂，不是湯頭。沒有人相信。':r.success?'你從高階小聯盟重新排隊，行李裡多了一罐牛油。':'測試數字不算漂亮，但球探想知道下一碗能不能再來一次。');
+        tlNote(4,'牛肉麵奇蹟重返美職');
+        card('gold','火球重新上桌',`你從 <b class="hl">${LV[lv].n}</b> 回到美國職棒。醫師看了核磁共振，沉默很久，只問：「那家店週一有開嗎？」`);done();
+      });
+    }},
+    {t:'笑一笑，把招牌收起來，照原復健計畫走',s:'維持原球隊與正常傷後路線',f:()=>{card('info','湯是湯，球是球','你把試賣的麵分給鄰居，隔天照表回到重量室。奇蹟沒有發生，復健至少是真的。');done();}}
+  ]);
+  return true;
+}
 function movement(){
   const o=ovr();
   if(S.stage==='HS'){ if(S.stageYr<3)advance(); else pathChoiceHS(); return; }
@@ -2345,6 +2428,8 @@ function movement(){
     return;
   }
   /* 職業 */
+  if(S.year===1999&&S.era.collapseChoice){resolveCollapse1999(()=>movement());return;}
+  if(S.skipMid&&maybeBeefNoodleReturn(()=>advance()))return;
   if(S.skipMid){ advance(); return; } /* 復健年不異動 */
   if(o<30){ buyoutRemaining(1); endGame('能力已跌破中職二軍最低水準，'+S.year+' 年球季後遭釋出，被迫引退。'); return; }
   if(S.org==='NPB')S.npbYears++;
@@ -3076,6 +3161,7 @@ function endGame(reason){
   if((S.achievements||[]).includes('jp_union'))picks.push('他那年站在罷賽隊伍裡，不是因為最大咖，是因為知道少一隊就少很多人的明天。');
   if((S.achievements||[]).includes('us_clean'))picks.push('那個年代每個數字都會被懷疑；至少他的球衣，最後能攤在陽光下。');
   if((S.achievements||[]).includes('us_community'))picks.push('我最記得的不是那季幾支安打，是城市最難的時候，他真的有來。');
+  if((S.achievements||[]).includes('beef_noodle_return'))picks.push('別再問是哪一家牛肉麵了，退役投手排隊排到美國；重點可能不是湯，是老闆自己先喝完那一碗。');
   if((S.achievements||[]).includes('world_headline'))picks.push('台灣、日本、美國都有人為他提早進場。不是旅外，是三次把異鄉打成主場。');
   if(S.traits.cancer)picks.push('球是打得好啦，但那個態度……更衣室少了他反而清靜');
   if(S.traits.thief)picks.push('當年拒絕下放又打不出來，薪水小倫這名號是自己掙來的');
