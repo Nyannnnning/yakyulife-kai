@@ -130,6 +130,21 @@ for (const name of ['newState', 'ovr', 'simSeason', 'injuryProb', 'startYear', '
   assert.equal(evaluate(`typeof ${name}`), 'function', `missing core function ${name}`);
 }
 
+assert.doesNotMatch(game, /\b(?:HS|U)_CUPS\b/, 'legacy amateur tournament constants must not return');
+assert.deepEqual(Array.from(evaluate(`(() => {
+  seedInit('first-year-season-regression');
+  S = newState('First Year', 'P', null);
+  S.stage = 'HS'; S.year = 1990; S.age = 16; S.seasonFactor = 1;
+  stepQ = [() => {}]; amateurSeason();
+  const highSchoolLogs = S.log.length;
+
+  seedInit('university-season-regression');
+  S = newState('University', 'IF', null);
+  S.stage = 'U'; S.year = 1995; S.age = 21; S.seasonFactor = 1;
+  stepQ = [() => {}]; amateurSeason();
+  return [highSchoolLogs, S.log.length];
+})()`)), [1, 1], 'high-school and university seasons must finish with era-specific tournaments');
+
 assert.equal(evaluate(`(() => { seedInit('era-start'); S = newState('測試球員', 'IF', null); return S.year; })()`), 1990, 'career must start in 1990');
 assert.deepEqual(Array.from(evaluate('cpblTeamsForYear(1990)')), ['兄弟巨象', '府城雄獅', '北城赤龍', '首都猛虎'], '1990 founding teams are out of sync');
 assert.equal(evaluate('cpblTeamsForYear(1993).length'), 6, '1993 expansion must produce six teams');

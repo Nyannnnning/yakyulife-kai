@@ -126,7 +126,7 @@ function dposReview(cont){
     f:()=>{ S.dpos=p; card('info','守位調整',`球團季末評估後，新球季改守 <b class="hl">${DPN[p]}</b>。`); cont(); }}));
   choose(`守位會議：教練團認為你的守備已撐不住 ${DPN[S.dpos]}（${LV[S.lv].n}標準）`,opts);
 }
-const APP_VER='v1.6.0';
+const APP_VER='v1.6.1';
 const TEAM_COLOR={
   /* 中職 */
   '兄弟巨象':'#ffd800','府城雄獅':'#ff7f00','北城赤龍':'#c8102e','首都猛虎':'#1a7a3a','華報飛鷹':'#7a263a','中州棕熊':'#6f4e37','中州公牛':'#264653','海灣巨鯨':'#246bce',
@@ -2004,7 +2004,7 @@ function injStatLoss(big){
 function amateurSeason(){
   if(S.seasonFactor===0){ card('bad','','整季只能在場邊看著隊友比賽。');
     S.log.push({y:S.year,age:S.age,tm:S.team||stageLabel(),line:'傷缺全季', inj:true}); nextStep(); return; }
-  const cups=S.stage==='HS'?HS_CUPS:S.stage==='U'?U_CUPS:['成棒甲組春季聯賽','成棒甲組秋季聯賽'];
+  const cups=S.stage==='HS'?hsCupsForYear(S.year):S.stage==='U'?uCupsForYear(S.year):['成棒甲組春季聯賽','成棒甲組秋季聯賽'];
   const thr=S.stage==='HS'?[52,46,40,34,28]:[60,54,48,42,36];
   let gain=0,lines=[],plain=[];
   const tB=S.stage==='HS'?({1:6,2:0,3:-6})[S.hsTier||2]:0; /* 高中隱藏強度分級 */
