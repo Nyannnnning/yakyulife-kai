@@ -7,9 +7,20 @@ const ri=(a,b)=>a+Math.floor(R()*(b-a+1));
 const pick=a=>a[Math.floor(R()*a.length)];
 const chance=p=>R()*100<p;
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+let SETTLEMENT_SCROLL_LOCK=false;
 function scrollBottom(){ /* iOS Safari 於 iframe 內平滑滾動易觸發白畫面,改用同步滾動+rAF */
-  try{ requestAnimationFrame(function(){ window.scrollTo(0, document.body.scrollHeight); }); }
-  catch(e){ try{ window.scrollTo(0, document.body.scrollHeight); }catch(_){} }
+  if(SETTLEMENT_SCROLL_LOCK)return;
+  try{ requestAnimationFrame(function(){ if(!SETTLEMENT_SCROLL_LOCK)window.scrollTo(0, document.body.scrollHeight); }); }
+  catch(e){ if(!SETTLEMENT_SCROLL_LOCK)try{ window.scrollTo(0, document.body.scrollHeight); }catch(_){} }
+}
+function scrollSettlementStart(){
+  try{
+    const heads=document.querySelectorAll('.yr-head'),board=document.getElementById('board');
+    const off=((board&&board.getBoundingClientRect().height)||0)+8;
+    for(const h of heads)if(h.textContent==='生涯終幕'){
+      window.scrollTo(0,Math.max(0,h.getBoundingClientRect().top+(window.scrollY||0)-off)); return;
+    }
+  }catch(e){}
 }
 const N0=(sd)=> (R()+R()+R()+R()-2)/2*sd*2; /* 近似常態 */
 
@@ -126,7 +137,7 @@ function dposReview(cont){
     f:()=>{ S.dpos=p; card('info','守位調整',`球團季末評估後，新球季改守 <b class="hl">${DPN[p]}</b>。`); cont(); }}));
   choose(`守位會議：教練團認為你的守備已撐不住 ${DPN[S.dpos]}（${LV[S.lv].n}標準）`,opts);
 }
-const APP_VER='v1.6.2';
+const APP_VER='v1.6.3';
 const TEAM_COLOR={
   /* 中職 */
   '兄弟巨象':'#ffd800','府城雄獅':'#ff7f00','北城赤龍':'#c8102e','首都猛虎':'#1a7a3a','華報飛鷹':'#7a263a','中州棕熊':'#6f4e37','中州公牛':'#264653','海灣巨鯨':'#246bce',
@@ -460,7 +471,6 @@ function addAb(k,v){ if(!(k in S.ab))return 0; const o=S.ab[k];
   S.ab[k]=cur; return cur-o; }
 function injuryProb(){ /* 基礎風險從 24 降為 15，減少動不動就受傷的頻率 */
   let p=15+S.injNext;
-  p+=Math.floor(((S.dev&&S.dev.fatigue)||0)/10); /* 前一季負荷會跟著球員進春訓，不會憑空消失 */
   if(S.age>=35)p+=12; else if(S.age>=32)p+=6;
   if(S.traits.academy&&S.age<25)p-=5; /* 學院派:25歲前科學化管理 */
   if(S.traits.iron&&S.traits.glass)p=25;
@@ -1027,6 +1037,10 @@ function recordFameLeague(){
   if(['CPBL','NPB','MLB'].includes(b)&&p.index>=2)S.era.fameLeagues[b]=true;
   if(['CPBL','NPB','MLB'].every(k=>S.era.fameLeagues[k]))unlockAchievement('world_headline','三個地方都曾有人為你的名字提早進場。');
 }
+/* 新增年代／D20 劇情只影響當季表現，不額外墊高原作者的永久能力成長曲線。 */
+function addSeasonMomentum(points){
+  const n=Math.max(0,Math.round(points||0)); S.pendStat=(S.pendStat||0)+n; return n;
+}
 
 /* 衰退期禁藥線：不是固定劇情，每一年都由壓力、傷勢與咖位共同決定是否敲門。 */
 function declineDrugFlow(done){
@@ -1052,7 +1066,7 @@ function declineDrugTemptation(p,dec,done){
   card('bad',`${S.year}｜身體慢了，誘惑追上來`,`${who}。「不是變強，只是把被年紀拿走的拿回來。」他說能讓${core}回到去年，沒說代價會在哪一年追上。<br>${standingLine(p)}`);
   choose('這不是訓練方法的選擇，是你願不願意把生涯交給一個秘密。',[
     {t:'不要。慢下來也是真實的我',main:true,s:'拒絕禁藥｜解鎖正面年代成就',f:()=>{O.clean=true;O.refused=(O.refused||0)+1;improveMind('discipline',2);unlockAchievement('decline_clean',p.index>=2?'你接受海報終有一天會換人，卻不讓舊海報替你做決定。':'名單可能不等你；至少上面的數字仍然是你。');done();}},
-    {t:'先找球員會、隊醫或可信任的人談',s:`D20 洞察 DC ${13+p.index}｜成功找到合法調整方案`,f:()=>d20Check({title:'把盒子帶到光下',ability:'insight',dc:13+p.index,bonus:p.bonus,edge:p.edge,stakes:p.index>=2?'牽涉你的人越多，新聞越大。你得先找到會保護球員，而不是保護球團的人。':'你沒有證據鏈，只有一句話和一只還沒打開的盒子。'},r=>{O.clean=true;O.refused=(O.refused||0)+1;if(r.success){S.dev.fatigue=Math.max(0,S.dev.fatigue-8);S.dev.trust+=2;S.pool+=1;unlockAchievement('decline_clean','合法的恢復計畫不會把歲月倒轉，但讓你知道還能怎麼打。');}else{S.dev.trust--;card('info','消息先漏了出去','你沒有碰禁藥，報紙卻先用了「禁藥疑雲」四個字。清白有時也得花時間證明。');}done();})},
+    {t:'先找球員會、隊醫或可信任的人談',s:`D20 洞察 DC ${13+p.index}｜成功找到合法調整方案`,f:()=>d20Check({title:'把盒子帶到光下',ability:'insight',dc:13+p.index,bonus:p.bonus,edge:p.edge,stakes:p.index>=2?'牽涉你的人越多，新聞越大。你得先找到會保護球員，而不是保護球團的人。':'你沒有證據鏈，只有一句話和一只還沒打開的盒子。'},r=>{O.clean=true;O.refused=(O.refused||0)+1;if(r.success){S.dev.fatigue=Math.max(0,S.dev.fatigue-8);S.dev.trust+=2;addSeasonMomentum(1);unlockAchievement('decline_clean','合法的恢復計畫不會把歲月倒轉，但讓你知道還能怎麼打。');}else{S.dev.trust--;card('info','消息先漏了出去','你沒有碰禁藥，報紙卻先用了「禁藥疑雲」四個字。清白有時也得花時間證明。');}done();})},
     {t:'收下。我要把巔峰借回來',warn:true,s:`恢復本季部分衰退｜留下證據，往後可能遭藥檢、曝光與停賽`,f:()=>{revokeAchievement('decline_clean','你曾經把盒子推回去，這一次卻把它帶回家。');revokeAchievement('us_clean','乾淨球衣的承諾，在這次選擇後失去原來的意義。');O.ped=true;O.evidence=Math.max(1,O.evidence+1);O.years=1;const back=Math.max(1,Math.ceil(dec*.6));POS_AB[S.pos].forEach(k=>addAb(k,back));S.dev.trust+=p.index>=2?2:1;unlockAchievement('decline_shadow',`所有能力暫時回升 ${back}；這些數字從今天起不再只屬於球場。`);done();}}
   ]);
 }
@@ -1098,16 +1112,16 @@ function annualDevelopmentPlan(done){
   choose(`年度養成目標｜疲勞 ${D.fatigue}/50｜自律 ${S.mind.discipline}・沉著 ${S.mind.nerve}・洞察 ${S.mind.insight}`,[
     {t:'磨一項武器',main:true,s:'指定能力做全年主軸｜春訓用該能力判定',f:()=>{
       choose('這一年，要把哪一項練成你的名字？',POS_AB[S.pos].map(k=>({t:ABL[k],main:k===POS_AB[S.pos][0],s:`目前 ${S.ab[k]}／潛力 ${S.pot[k]||62}`,f:()=>{D.plan='skill';D.focus=k;springTrainingCheck(done);}})));}},
-    {t:'先把身體顧好',s:'體力 +1、疲勞 −15｜少一點爆發，多一點明年',f:()=>{D.plan='body';D.focus='sta';addAb('sta',1);D.fatigue=Math.max(0,D.fatigue-15);springTrainingCheck(done);}},
+    {t:'先把身體顧好',s:'疲勞 −15、本季受傷風險 −5%｜少一點爆發，多一點明年',f:()=>{D.plan='body';D.focus='sta';D.fatigue=Math.max(0,D.fatigue-15);S.tmpInj=Math.max(-15,(S.tmpInj||0)-5);springTrainingCheck(done);}},
     {t:'搶一個上場位置',warn:true,s:'用沉著接受春訓檢驗｜成功會換來教練信任',f:()=>{D.plan='role';D.focus=null;D.trust++;springTrainingCheck(done);}}]);
 }
 function developmentSeasonReview(){
   ensureCampaignState(); const D=S.dev;
   const load=S.seasonFactor<=0?0:S.stage==='PRO'?Math.round(8+Math.max(0,(S.lastSt&&S.lastSt.G)||0)/12):10;
   D.fatigue=clamp(D.fatigue+load-(D.plan==='body'?5:0),0,50);
-  if(D.plan==='skill'&&D.focus&&S.seasonFactor>=0.65){ const got=addAb(D.focus,D.spring>=1?2:1);
-    if(got>0)card('good','年度養成回顧',`整季反覆磨的東西，終於長在身上。<b class="up">${ABL[D.focus]} +${got}</b>｜季末疲勞 ${D.fatigue}/50。`);
-    else card('info','年度養成回顧',`${ABL[D.focus]} 的進度沒有消失，只是高段能力從來不肯白送。季末疲勞 ${D.fatigue}/50。`); }
+  if(D.plan==='skill'&&D.focus&&S.seasonFactor>=0.65){
+    if(D.spring>=1){D.trust=clamp(D.trust+1,-5,10);card('good','年度養成回顧',`整季反覆磨的東西，教練都看在眼裡。<b class="up">教練信任 +1</b>｜季末疲勞 ${D.fatigue}/50。`);}
+    else card('info','年度養成回顧',`${ABL[D.focus]} 沒有一夜長成；今年留下的是動作與經驗，不是額外能力點。季末疲勞 ${D.fatigue}/50。`); }
   else card('info','年度養成回顧',`球季結束，防護員在表上寫下：疲勞 <b class="hl">${D.fatigue}/50</b>。明年春訓，這筆帳還是要算。`);
 }
 
@@ -1121,7 +1135,7 @@ function phaseHistory(){
     card('gold',title,'四支球隊、滿場紙花、第一次真正屬於這座島的職業球季。你隔著電視看見燈光，忽然覺得那片草皮沒有那麼遠。');
     choose('那一年，你把什麼放進心裡？',[
       {t:'總有一天，我要站上去',main:true,s:'沉著 +2',f:()=>{improveMind('nerve',2);done();}},
-      {t:'先把每天的基本功做好',s:'自律 +2、季末能力點 +1',f:()=>{improveMind('discipline',2);S.pool++;done();}},
+      {t:'先把每天的基本功做好',s:'自律 +2、教練信任 +1',f:()=>{improveMind('discipline',2);S.dev.trust=clamp(S.dev.trust+1,-5,10);done();}},
       {t:'家裡需要錢，夢想得算成本',s:'洞察 +2｜黑暗事件會記得這個念頭',f:()=>{improveMind('insight',2);S.era.moneyPressure=1;done();}}]); return;
   }
   if(S.year===1991){
@@ -1138,7 +1152,7 @@ function phaseHistory(){
   if(S.year===1993){
     card('info',title,'球迷變多、球隊也變多。擴編像突然多開了幾扇門——只是每扇門後面，都有人等著搶同一個位置。');
     d20Check({title:'擴編年代的曝光機會',ability:'nerve',dc:11,edge:S.stage==='PRO'?1:0,stakes:'球探和記者都來了。你只有幾球，讓他們記住你的名字。'},r=>{
-      if(r.success){S.pool+=r.strong?3:2;card('good','名字被圈了起來',`名單邊上多了一個紅圈。季末能力點 <b class="up">+${r.strong?3:2}</b>。`);} else card('info','鏡頭擦肩而過','你沒有搞砸，只是那天更亮的是別人。球季還長。'); done();}); return;
+      if(r.success){const boost=addSeasonMomentum(r.strong?3:2);card('good','名字被圈了起來',`名單邊上多了一個紅圈。本季狀態 <b class="up">+${boost}</b>。`);} else card('info','鏡頭擦肩而過','你沒有搞砸，只是那天更亮的是別人。球季還長。'); done();}); return;
   }
   if(S.year===1994){
     card('info',title,'職棒進入電視黃金時段。以前失誤只會被球場裡的人看見；現在，全家都能在晚飯桌前看重播。');
@@ -1214,7 +1228,7 @@ function historyCollapse1999(done){
       {t:'把最後一季打完，季末接受安置',main:true,s:'1999 成績仍記在母隊｜球季結束後轉隊',f:()=>{S.era.collapseChoice='stay';finish();}},
       {t:'把最後一季打完，同時把資料寄往美國',warn:true,s:'1999 成績仍記在母隊｜季末 D20 爭取小聯盟機會',f:()=>{S.era.collapseChoice='us';finish();}}]); return;
   }
-  d20Check({title:'這一代的旅美窄門',ability:'insight',dc:13,bonus:ovr()>=48?2:0,stakes:'球探不再只問「你想不想」，而是問「你的資料能不能留下，下一次能不能再看」。'},r=>{if(r.success){S.pool+=r.strong?4:2;card('good','資料被帶走了',`沒有承諾。但你的名字跟著球探上了飛機。季末能力點 <b class="up">+${r.strong?4:2}</b>。`);}else card('info','門開了，還沒輪到你','這次球探帶走的是別人的資料。至少從今天起，那條路確實存在。');finish();});
+  d20Check({title:'這一代的旅美窄門',ability:'insight',dc:13,bonus:ovr()>=48?2:0,stakes:'球探不再只問「你想不想」，而是問「你的資料能不能留下，下一次能不能再看」。'},r=>{if(r.success){const boost=addSeasonMomentum(r.strong?4:2);card('good','資料被帶走了',`沒有承諾。但你的名字跟著球探上了飛機。本季狀態 <b class="up">+${boost}</b>。`);}else card('info','門開了，還沒輪到你','這次球探帶走的是別人的資料。至少從今天起，那條路確實存在。');finish();});
 }
 function resolveCollapse1999(done){
   const choice=S.era.collapseChoice;if(!choice){done();return;}
@@ -1253,7 +1267,7 @@ function jpArrival(p,done){
   card('info',`${S.year}｜日本，第一只置物櫃`,`${caller}。牆上寫的是你還讀不快的字，名單上則只有一個很清楚的身分：外國人。<br>${standingLine(p)}`);
   const opts=[
     {t:'先把暗號和隊友名字學會',main:true,s:`D20 洞察 DC ${13-p.bonus}｜成功可解鎖年代成就`,f:()=>d20Check({title:'休息室的共同語言',ability:'insight',dc:13-p.bonus,edge:p.edge,stakes:'不是考日文。是讓隊友在需要補位時，知道你聽得懂。'},r=>{if(r.success){S.dev.trust+=r.strong?3:2;improveMind('insight',1);unlockAchievement('jp_arrival',r.strong?'到了季中，捕手已經懶得等翻譯。':'你的名字終於比「那個助人」更常被喊。');}else{S.dev.trust=Math.max(0,S.dev.trust-1);card('info','慢了半拍','你聽懂了句子，沒聽懂空氣。下一次集合，翻譯還是站在你旁邊。');}done();})},
-    {t:'成績就是最好的語言',s:'季末能力點 +2｜教練信任 −1',f:()=>{S.pool+=2;S.dev.trust=Math.max(0,S.dev.trust-1);card('info','少說，多做','你把採訪推掉，留下來多揮一百次。隊友不討厭你，只是還不認識你。');done();}}
+    {t:'成績就是最好的語言',s:'本季狀態 +2｜教練信任 −1',f:()=>{addSeasonMomentum(2);S.dev.trust=Math.max(0,S.dev.trust-1);card('info','少說，多做','你把採訪推掉，留下來多揮一百次。隊友不討厭你，只是還不認識你。');done();}}
   ];
   if(p.index>=2)opts.push({t:'對鏡頭說：我不是來當救世主',s:'D20 沉著｜名氣越大，回音越大',f:()=>d20Check({title:'第一場記者會',ability:'nerve',dc:14,bonus:p.bonus,edge:p.edge,stakes:'一句太軟，會被當客套；一句太硬，明天就只剩標題。'},r=>{if(r.success){S.dev.trust+=2;unlockAchievement('jp_arrival','你把「助人」兩個字，慢慢說成了隊友。');}else{S.dev.trust--;card('bad','標題先到了','你說了很多關於團隊的話，報紙只留下「我不是救世主」。');}done();})});
   choose(`你目前是：${p.name}。第一步怎麼走？`,opts);
@@ -1272,8 +1286,8 @@ function jpNomo1995(p,done){
   card('gold','1995｜旋風從太平洋另一邊吹回來',`那位扭身投球的日本投手，在洛杉磯拿下新人王。球探嘴裡那句「日本球員去不了美國」，突然少了半截。<br>${standingLine(p)}`);
   const key=S.pos==='P'?(S.ab.brk>=S.ab.ctl?'brk':'ctl'):(S.ab.con>=S.ab.pow?'con':'pow');
   choose('這陣風，對你是新聞還是路標？',[
-    {t:'整理影片，請經紀人送去美國',main:true,s:`D20 ${ABL[key]} DC ${p.index>=2?14:16}｜成功提早打開旅美路線`,f:()=>d20Check({title:'太平洋另一端的球探報告',label:ABL[key],score:S.ab[key],dc:p.index>=2?14:16,bonus:p.bonus,edge:p.edge,stakes:p.index>=2?'球團知道這卷帶子的存在。你的下一步會被當成新聞。':'沒有球團替你背書。錄影帶得先從一疊陌生名字裡活下來。'},r=>{if(r.success){S.era.usDoor=true;S.pool+=r.strong?3:1;unlockAchievement('jp_bridge','回信只有一句：「我們會繼續看。」那已經足夠。');}else card('info','沒有回信','影帶寄出去了，沉默也寄了回來。你把副本留在抽屜，沒有丟。');done();})},
-    {t:'先把自己的招牌練到無法忽視',s:`${ABL[key]} +1、自律 +1`,f:()=>{addAb(key,1);improveMind('discipline',1);card('good','風先留在牛棚','別人的路證明門存在。你的工作，是走到門前時有東西能帶。');done();}},
+    {t:'整理影片，請經紀人送去美國',main:true,s:`D20 ${ABL[key]} DC ${p.index>=2?14:16}｜成功提早打開旅美路線`,f:()=>d20Check({title:'太平洋另一端的球探報告',label:ABL[key],score:S.ab[key],dc:p.index>=2?14:16,bonus:p.bonus,edge:p.edge,stakes:p.index>=2?'球團知道這卷帶子的存在。你的下一步會被當成新聞。':'沒有球團替你背書。錄影帶得先從一疊陌生名字裡活下來。'},r=>{if(r.success){S.era.usDoor=true;addSeasonMomentum(r.strong?3:1);unlockAchievement('jp_bridge','回信只有一句：「我們會繼續看。」那已經足夠。');}else card('info','沒有回信','影帶寄出去了，沉默也寄了回來。你把副本留在抽屜，沒有丟。');done();})},
+    {t:'先把自己的招牌練到無法忽視',s:'本季狀態 +1、自律 +1',f:()=>{addSeasonMomentum(1);improveMind('discipline',1);card('good','風先留在牛棚','別人的路證明門存在。你的工作，是走到門前時有東西能帶。');done();}},
     {t:'那是特例，不值得賭',s:'疲勞 −5｜失去提早旅美機會',f:()=>{S.dev.fatigue=Math.max(0,S.dev.fatigue-5);card('info','把報紙折起來','你留在熟悉的球場。至少今年，風沒有改變你的方向。');done();}}
   ]);
 }
@@ -1292,28 +1306,28 @@ function jpBay1998(p,done){
   if(!bay){
     choose('你怎麼面對這股浪？',[
       {t:'把他們當真正的冠軍級對手',main:true,s:'洞察 +1、教練信任 +1',f:()=>{improveMind('insight',1);S.dev.trust++;card('info','不笑的人看得最清楚','情蒐會議裡，只有你沒有說「他們遲早會掉下來」。');done();}},
-      {t:'我要親手讓童話停在這裡',s:'D20 沉著｜成功得季末能力點',f:()=>d20Check({title:'灣岸決戰',ability:'nerve',dc:14,bonus:p.bonus,edge:p.edge,stakes:'滿場藍色旗子把聲音推回場內。你得先聽見自己的呼吸。'},r=>{if(r.success){S.pool+=r.strong?3:1;card('good','你讓他們多等了一晚',`這不是改寫冠軍，只是讓冠軍記得你的名字。季末能力點 <b class="up">+${r.strong?3:1}</b>。`);}else card('bad','浪打上來了','球一落地，全場像同時站起來。你第一次知道一座城市能有多重。');done();})},
+      {t:'我要親手讓童話停在這裡',s:'D20 沉著｜成功提升本季狀態',f:()=>d20Check({title:'灣岸決戰',ability:'nerve',dc:14,bonus:p.bonus,edge:p.edge,stakes:'滿場藍色旗子把聲音推回場內。你得先聽見自己的呼吸。'},r=>{if(r.success){const boost=addSeasonMomentum(r.strong?3:1);card('good','你讓他們多等了一晚',`這不是改寫冠軍，只是讓冠軍記得你的名字。本季狀態 <b class="up">+${boost}</b>。`);}else card('bad','浪打上來了','球一落地，全場像同時站起來。你第一次知道一座城市能有多重。');done();})},
       {t:'那只是媒體故事',s:'疲勞 −3｜教練信任 −1',f:()=>{S.dev.fatigue=Math.max(0,S.dev.fatigue-3);S.dev.trust=Math.max(0,S.dev.trust-1);done();}}
     ]);return;
   }
   if(!top){
     choose('你不在封王名單中央，還能替它做什麼？',[
-      {t:'主動當假想對手，替一軍準備',main:true,s:'D20 自律｜成功也能成為冠軍的一部分',f:()=>d20Check({title:'看不見的封王練習',ability:'discipline',dc:13,bonus:p.bonus,edge:p.edge,stakes:'沒有轉播，沒有滿場旗子。你每天模仿下一個對手，讓一軍多看懂一種球。'},r=>{if(r.success){S.dev.trust+=3;S.pool+=r.strong?3:1;unlockAchievement('jp_bay_star','封王照片裡沒有你，香檳回到二軍基地時，第一瓶先遞到你手上。');}else card('info','留在名單外','你做完所有準備，最後沒有被叫上去。冠軍是真的，遺憾也是真的。');done();})},
+      {t:'主動當假想對手，替一軍準備',main:true,s:'D20 自律｜成功也能成為冠軍的一部分',f:()=>d20Check({title:'看不見的封王練習',ability:'discipline',dc:13,bonus:p.bonus,edge:p.edge,stakes:'沒有轉播，沒有滿場旗子。你每天模仿下一個對手，讓一軍多看懂一種球。'},r=>{if(r.success){S.dev.trust+=3;addSeasonMomentum(r.strong?3:1);unlockAchievement('jp_bay_star','封王照片裡沒有你，香檳回到二軍基地時，第一瓶先遞到你手上。');}else card('info','留在名單外','你做完所有準備，最後沒有被叫上去。冠軍是真的，遺憾也是真的。');done();})},
       {t:'把每一場轉播看完，等緊急召集',s:'洞察 +1、教練信任 +1',f:()=>{improveMind('insight',1);S.dev.trust++;card('good','電話始終沒響','你沒有上場，卻一次也沒有讓裝備離開手邊。');done();}},
       {t:'那不是我的冠軍',warn:true,s:'疲勞 −5｜教練信任 −2',f:()=>{S.dev.fatigue=Math.max(0,S.dev.fatigue-5);S.dev.trust=Math.max(0,S.dev.trust-2);card('info','電視被你關掉','窗外每一聲歡呼，都像在提醒你不在那裡。');done();}}
     ]);return;
   }
   choose('輪到你替這個秋天留下一球。',[
-    {t:p.index>=2?'接下最關鍵的打席／局數':'告訴教練：我準備好了',main:true,s:`D20 沉著 DC ${p.index>=2?15:13}｜結果依咖位放大`,f:()=>d20Check({title:'橫濱的最後一哩',ability:'nerve',dc:p.index>=2?15:13,bonus:p.bonus,edge:p.edge,stakes:p.index>=2?'全城等的是你。成功會被做成海報，失敗也會。':'你原本不在劇本中央。現在，球剛好滾到你面前。'},r=>{if(r.success){S.pool+=r.strong?5:3;S.dev.trust+=3;unlockAchievement('jp_bay_star',r.strong?'封王畫面重播很多年，你一直在畫面裡。':'你沒有成為唯一的英雄，但確實推了這支球隊一把。');}else{S.dev.trust--;card('bad','球從手套邊出去','隊友最後仍把秋天帶回橫濱。你跟著繞場，笑得比誰都用力。');}done();})},
+    {t:p.index>=2?'接下最關鍵的打席／局數':'告訴教練：我準備好了',main:true,s:`D20 沉著 DC ${p.index>=2?15:13}｜結果依咖位放大`,f:()=>d20Check({title:'橫濱的最後一哩',ability:'nerve',dc:p.index>=2?15:13,bonus:p.bonus,edge:p.edge,stakes:p.index>=2?'全城等的是你。成功會被做成海報，失敗也會。':'你原本不在劇本中央。現在，球剛好滾到你面前。'},r=>{if(r.success){addSeasonMomentum(r.strong?5:3);S.dev.trust+=3;unlockAchievement('jp_bay_star',r.strong?'封王畫面重播很多年，你一直在畫面裡。':'你沒有成為唯一的英雄，但確實推了這支球隊一把。');}else{S.dev.trust--;card('bad','球從手套邊出去','隊友最後仍把秋天帶回橫濱。你跟著繞場，笑得比誰都用力。');}done();})},
     {t:'把舞台讓給狀況更好的隊友',s:'教練信任 +2｜無個人成就',f:()=>{S.dev.trust+=2;card('good','正確的人站上去','你沒有出現在最後一球，卻是第一個衝出休息室的人。');done();}},
-    {t:'我要當英雄，不接受替補',warn:true,s:'成功成名、失敗重傷信任',f:()=>d20Check({title:'把劇本搶過來',ability:'nerve',dc:17,bonus:p.bonus,edge:p.edge,stakes:'你不是請戰，是要求所有人把秋天押在你身上。'},r=>{if(r.strong){S.pool+=6;unlockAchievement('jp_bay_star','那一夜，你真的把大話打成了安打。');}else{S.dev.trust=Math.max(0,S.dev.trust-3);card('bad','英雄的位子太窄','你上去了，結果沒有跟上。封王香檳裡，有一小塊地方始終是苦的。');}done();})}
+    {t:'我要當英雄，不接受替補',warn:true,s:'成功成名、失敗重傷信任',f:()=>d20Check({title:'把劇本搶過來',ability:'nerve',dc:17,bonus:p.bonus,edge:p.edge,stakes:'你不是請戰，是要求所有人把秋天押在你身上。'},r=>{if(r.strong){addSeasonMomentum(6);unlockAchievement('jp_bay_star','那一夜，你真的把大話打成了安打。');}else{S.dev.trust=Math.max(0,S.dev.trust-3);card('bad','英雄的位子太窄','你上去了，結果沒有跟上。封王香檳裡，有一小塊地方始終是苦的。');}done();})}
   ]);
 }
 function jpIchiro2001(p,done){
   const key=S.pos==='P'?(S.ab.ctl>=S.ab.brk?'ctl':'brk'):(S.ab.con>=S.ab.eye?'con':'eye');
   card('gold','2001｜野手也能過海',`西雅圖每天傳回新的安打。以前球探問亞洲野手「能不能適應」；現在，他們開始問「下一個在哪裡」。<br>${standingLine(p)}`);
   choose('球探坐上看台，你把什麼留給他？',[
-    {t:`把 ${ABL[key]} 練成不需要翻譯的招牌`,main:true,s:'D20 技術判定｜成功開啟旅美並解鎖成就',f:()=>d20Check({title:'下一張船票',label:ABL[key],score:S.ab[key],dc:p.index>=2?14:16,bonus:p.bonus,edge:p.edge,stakes:p.index>=2?'每一隊都已經有你的完整報告。今天看的是你能不能承受比較。':'球探表上還把你寫成「台灣來的那位」。你只有幾個球改掉稱呼。'},r=>{if(r.success){S.era.usDoor=true;S.pool+=r.strong?4:2;unlockAchievement('jp_nextwave','球探離場前，向你的經紀人要了電話。');}else card('info','報告沒有闔上','你沒有讓他當場點頭。但這一次，他把報告帶走了。');done();})},
+    {t:`把 ${ABL[key]} 練成不需要翻譯的招牌`,main:true,s:'D20 技術判定｜成功開啟旅美並解鎖成就',f:()=>d20Check({title:'下一張船票',label:ABL[key],score:S.ab[key],dc:p.index>=2?14:16,bonus:p.bonus,edge:p.edge,stakes:p.index>=2?'每一隊都已經有你的完整報告。今天看的是你能不能承受比較。':'球探表上還把你寫成「台灣來的那位」。你只有幾個球改掉稱呼。'},r=>{if(r.success){S.era.usDoor=true;addSeasonMomentum(r.strong?4:2);unlockAchievement('jp_nextwave','球探離場前，向你的經紀人要了電話。');}else card('info','報告沒有闔上','你沒有讓他當場點頭。但這一次，他把報告帶走了。');done();})},
     {t:'替後輩翻譯球探真正想看的東西',s:'洞察 +2、教練信任 +2',f:()=>{improveMind('insight',2);S.dev.trust+=2;card('good','門不只留給自己','你把自己的資料放在最後一頁，前面先放了兩個年輕隊友。');done();}},
     {t:'拒絕當「下一個誰」',s:'沉著 +1｜若為聯盟門面，球迷信任 +2',f:()=>{improveMind('nerve',1);if(p.index===3)S.dev.trust+=2;card('info','只當第一個自己','標題不滿意，球迷卻喜歡。你把比較留給記者，把球留在場內。');done();}}
   ]);
@@ -1349,7 +1363,7 @@ function usStrike1994(p,done){
 function usNomo1995(p,done){
   card('gold','1995｜旋風之後',`洛杉磯那位扭身投球的日本新人，讓全美第一次每天學著念一個亞洲投手的名字。記者轉過來看你：「所以，你們都這樣投球／打球嗎？」<br>${standingLine(p)}`);
   choose('你怎麼回答這個被放大的問題？',[
-    {t:'不躲標籤，用自己的球回答',main:true,s:'D20 沉著｜成功替後來者留下空間',f:()=>d20Check({title:'不是下一個誰',ability:'nerve',dc:14,bonus:p.bonus,edge:p.edge,stakes:p.index>=2?'全國轉播等著比較兩個亞洲名字。':'記者不一定會刊你的完整回答，但隊友正在旁邊聽。'},r=>{if(r.success){S.pool+=r.strong?3:1;S.dev.trust+=2;unlockAchievement('us_nomo','報紙仍然做了比較；至少最後一段，留下的是你的名字。');}else card('bad','問題比回答活得久','你打得不好，隔天所有報導都把那句比較放進標題。');done();})},
+    {t:'不躲標籤，用自己的球回答',main:true,s:'D20 沉著｜成功替後來者留下空間',f:()=>d20Check({title:'不是下一個誰',ability:'nerve',dc:14,bonus:p.bonus,edge:p.edge,stakes:p.index>=2?'全國轉播等著比較兩個亞洲名字。':'記者不一定會刊你的完整回答，但隊友正在旁邊聽。'},r=>{if(r.success){addSeasonMomentum(r.strong?3:1);S.dev.trust+=2;unlockAchievement('us_nomo','報紙仍然做了比較；至少最後一段，留下的是你的名字。');}else card('bad','問題比回答活得久','你打得不好，隔天所有報導都把那句比較放進標題。');done();})},
     {t:'主動幫下一批亞洲球員適應',s:'洞察 +2、教練信任 +2',f:()=>{improveMind('insight',2);S.dev.trust+=2;unlockAchievement('us_nomo','你沒有上頭版，卻成了很多人下飛機後第一通電話。');done();}},
     {t:'我只代表自己',s:'自律 +1｜不承擔媒體風險',f:()=>{improveMind('discipline',1);card('info','把國旗留在問題外','回答很短。有人說你冷淡，也有人終於只看你的成績。');done();}}
   ]);
@@ -1357,9 +1371,9 @@ function usNomo1995(p,done){
 function usInterleague1997(p,done){
   const top=LV[S.lv]&&LV[S.lv].top;
   card('info','1997｜兩個聯盟第一次在例行賽碰面',top?`球場字幕把「第一次」打得很大。${p.index>=2?'轉播單位把你的臉放進開場。':'教練直到最後一刻才把你的名字寫進名單。'}<br>${standingLine(p)}`:'小聯盟休息室看著跨聯盟賽轉播。球探說，聯盟之間的牆一倒，能比較的球員就更多了。');
-  if(!top){choose('',[{t:'▸ 把新的對手資料抄進筆記本',main:true,s:'洞察 +1、季末能力點 +1',f:()=>{improveMind('insight',1);S.pool++;done();}}]);return;}
+  if(!top){choose('',[{t:'▸ 把新的對手資料抄進筆記本',main:true,s:'洞察 +1、本季狀態 +1',f:()=>{improveMind('insight',1);addSeasonMomentum(1);done();}}]);return;}
   choose('第一次交手，你想留下什麼？',[
-    {t:p.index>=2?'接下全國轉播的正面對決':'爭取那個代打／中繼機會',main:true,s:'D20 沉著｜成功解鎖成就',f:()=>d20Check({title:'跨聯盟第一夜',ability:'nerve',dc:p.index>=2?15:13,bonus:p.bonus,edge:p.edge,stakes:p.index>=2?'大家已經知道你是誰；現在要看招牌能不能跨過聯盟。':'你可能只有一球。第一次有時候就是這麼小。'},r=>{if(r.success){S.pool+=r.strong?4:2;unlockAchievement('us_interleague',r.strong?'精華畫面播了一整週。':'紀錄簿不會替你加註咖位，只會寫下結果。');}else card('bad','新對手，舊弱點','對方第一次見你，卻像讀過整本報告。');done();})},
+    {t:p.index>=2?'接下全國轉播的正面對決':'爭取那個代打／中繼機會',main:true,s:'D20 沉著｜成功解鎖成就',f:()=>d20Check({title:'跨聯盟第一夜',ability:'nerve',dc:p.index>=2?15:13,bonus:p.bonus,edge:p.edge,stakes:p.index>=2?'大家已經知道你是誰；現在要看招牌能不能跨過聯盟。':'你可能只有一球。第一次有時候就是這麼小。'},r=>{if(r.success){addSeasonMomentum(r.strong?4:2);unlockAchievement('us_interleague',r.strong?'精華畫面播了一整週。':'紀錄簿不會替你加註咖位，只會寫下結果。');}else card('bad','新對手，舊弱點','對方第一次見你，卻像讀過整本報告。');done();})},
     {t:'先研究陌生對手，不搶鏡頭',s:'洞察 +2、疲勞 −3',f:()=>{improveMind('insight',2);S.dev.fatigue=Math.max(0,S.dev.fatigue-3);done();}},
     {t:'在鏡頭前挑釁另一聯盟',warn:true,s:'成功人氣大增、失敗教練信任 −3',f:()=>d20Check({title:'先把話說滿',ability:'nerve',dc:17,bonus:p.bonus,edge:p.edge,stakes:'開賽前的話，九局後都會有人拿回來。'},r=>{if(r.strong){S.dev.trust+=2;unlockAchievement('us_interleague','你說完，也真的做到了。');}else{S.dev.trust=Math.max(0,S.dev.trust-3);card('bad','對方把剪報貼在牆上','九局後，那張剪報被送回你的置物櫃。');}done();})}
   ]);
@@ -1368,7 +1382,7 @@ function usPower1998(p,done){
   const O=S.overseasDark, key=S.pos==='P'?'vel':'pow';
   card('bad','1998｜每一顆球都飛得更遠',`全壘打競賽把整個夏天點亮。某天，訓練員把沒有標籤的小瓶子放進你櫃子：「大家都在追上時代。」<br>${standingLine(p)}`);
   choose('這一步不是訓練菜單，是你要留下的版本。',[
-    {t:'把瓶子退回去',main:true,s:'拒絕灰色捷徑｜D20 自律決定能否在競爭中守住位置',f:()=>{O.clean=true;d20Check({title:'乾淨地追趕',ability:'discipline',dc:14+p.index,bonus:p.bonus,edge:p.edge,stakes:p.index>=2?'你拒絕的不只是一瓶東西，也是所有人對明星數字的期待。':'別人的力量突然長得很快；你的名單位置不會等道德勝利。'},r=>{unlockAchievement('us_clean',r.success?'你沒有變得比較輕鬆，只是每一筆成績都能直視。':'你掉出一段時間的名單，仍沒有回頭拿那只瓶子。');if(r.success){S.dev.trust+=2;improveMind('discipline',1);}else{S.dev.trust--;S.pool=Math.max(0,S.pool-1);card('info','乾淨沒有保證先發','你守住自己，卻沒守住所有機會。那也是代價。');}done();})}},
+    {t:'把瓶子退回去',main:true,s:'拒絕灰色捷徑｜D20 自律決定能否在競爭中守住位置',f:()=>{O.clean=true;d20Check({title:'乾淨地追趕',ability:'discipline',dc:14+p.index,bonus:p.bonus,edge:p.edge,stakes:p.index>=2?'你拒絕的不只是一瓶東西，也是所有人對明星數字的期待。':'別人的力量突然長得很快；你的名單位置不會等道德勝利。'},r=>{unlockAchievement('us_clean',r.success?'你沒有變得比較輕鬆，只是每一筆成績都能直視。':'你掉出一段時間的名單，仍沒有回頭拿那只瓶子。');if(r.success){S.dev.trust+=2;improveMind('discipline',1);}else{S.dev.trust--;S.pendStat=Math.max(0,(S.pendStat||0)-1);card('info','乾淨沒有保證先發','你守住自己，卻沒守住所有機會。那也是代價。');}done();})}},
     {t:'收下，不問裡面是什麼',warn:true,s:`${ABL[key]} +4｜證據與日後藥檢風險開始累積`,f:()=>{revokeAchievement('decline_clean');revokeAchievement('us_clean');O.ped=true;O.evidence=1;addAb(key,4);S.dev.trust+=1;card('bad','數字先替你說話',`${ABL[key]} <b class="up">+4</b>。球飛得更快，恢復也更快。只有那只空瓶，你不知道該丟去哪裡。`);done();}},
     {t:p.index>=2?'要求球團正式調查訓練員':'悄悄提醒可信任的隊友',s:'D20 洞察｜成功清除風險並提高信任',f:()=>d20Check({title:'把灰色東西拿到光下',ability:'insight',dc:p.index>=2?16:13,bonus:p.bonus,edge:p.edge,stakes:p.index>=2?'你的指控會碰到球團、贊助與隊友。說出口就沒有私下解決。':'你沒有證據鏈，只有一只不該出現的瓶子。'},r=>{if(r.success){O.clean=true;S.dev.trust+=r.strong?4:2;unlockAchievement('us_clean','不是每個人都感謝你，但那個櫃子再也沒有出現無標籤藥瓶。');}else{S.dev.trust=Math.max(0,S.dev.trust-2);O.evidence++;card('bad','瓶子不見了','隔天，訓練員說從沒見過你。隊友開始在你進門時停下話題。');}done();})}
   ]);
@@ -1377,7 +1391,7 @@ function usSeptember2001(p,done){
   const wave=()=>{
     card('gold','2001｜海的另一邊',`西雅圖的亞洲野手用安打把「身材不夠」四個字一筆筆劃掉。${p.index>=2?'記者問你是不是下一個象徵。':'球探第一次主動問你的打擊與守備，而不只問市場。'}<br>${standingLine(p)}`);
     choose('你怎麼接住這次目光？',[
-      {t:'不當樣板，用自己的方式打',main:true,s:'D20 技術判定｜成功解鎖年代成就',f:()=>{const key=S.pos==='P'?'ctl':(S.ab.con>=S.ab.eye?'con':'eye');d20Check({title:'數字前面的名字',label:ABL[key],score:S.ab[key],dc:p.index>=2?15:14,bonus:p.bonus,edge:p.edge,stakes:'這次不是證明亞洲球員都一樣，是證明你不必跟誰一樣。'},r=>{if(r.success){S.pool+=r.strong?4:2;unlockAchievement('us_ichiro','比較沒有消失，但你的球探報告終於有了自己的第一頁。');}else card('info','聚光燈先走了','熱潮沒有等你調整好。你只能留在下一場重新開始。');community();})}},
+      {t:'不當樣板，用自己的方式打',main:true,s:'D20 技術判定｜成功解鎖年代成就',f:()=>{const key=S.pos==='P'?'ctl':(S.ab.con>=S.ab.eye?'con':'eye');d20Check({title:'數字前面的名字',label:ABL[key],score:S.ab[key],dc:p.index>=2?15:14,bonus:p.bonus,edge:p.edge,stakes:'這次不是證明亞洲球員都一樣，是證明你不必跟誰一樣。'},r=>{if(r.success){addSeasonMomentum(r.strong?4:2);unlockAchievement('us_ichiro','比較沒有消失，但你的球探報告終於有了自己的第一頁。');}else card('info','聚光燈先走了','熱潮沒有等你調整好。你只能留在下一場重新開始。');community();})}},
       {t:'替新來的亞洲球員當第一個隊友',s:'洞察 +2、教練信任 +2',f:()=>{improveMind('insight',2);S.dev.trust+=2;unlockAchievement('us_ichiro','很多年後，他們記得的不是翻譯內容，是你在門口等。');community();}},
       {t:'把熱潮變成代言與曝光',warn:true,s:`收入 +${p.index>=2?220:70} 萬｜D20 洞察避免只剩標籤`,f:()=>{S.salary+=p.index>=2?220:70;d20Check({title:'市場與球場之間',ability:'insight',dc:14,bonus:p.bonus,edge:p.edge,stakes:'廣告想要一張亞洲臉，球隊需要一個球員。你得讓兩者別互相吃掉。'},r=>{if(r.success){S.dev.trust++;unlockAchievement('us_ichiro','你拿了代言，也沒有把名字借給刻板印象。');}else{S.dev.trust-=2;card('bad','海報比成績醒目','球迷認得你的臉，教練卻開始問你是否還看得見好球帶。');}community();})}}
     ]);
@@ -1414,8 +1428,8 @@ function usHits2004(p,done){
     const key=S.pos==='P'?'ctl':(S.ab.con>=S.ab.eye?'con':'eye');
     card('gold','2004｜二百六十二支不同的回答',`西雅圖那位亞洲打者把單季安打紀錄推到 262。長打還在統治海報，但安打、速度與每天上壘，重新有了自己的重量。<br>${standingLine(p)}`);
     choose('你要怎麼回應這個新數字？',[
-      {t:`把 ${ABL[key]} 做成每天都能帶上場的武器`,main:true,s:'D20 技術判定｜成功解鎖年代成就',f:()=>d20Check({title:'數字不需要翻譯',label:ABL[key],score:S.ab[key],dc:14,bonus:p.bonus,edge:p.edge,stakes:S.pos==='P'?'打者開始更重視每一顆可碰到的球；你得把邊角控得更細。':'不是追 262。是證明不靠同一種身材，也能每天改變比賽。'},r=>{if(r.success){addAb(key,r.strong?3:2);unlockAchievement('us_262',r.strong?'球探報告把「亞洲型球員」刪掉，改寫成你的名字。':'沒有紀錄，只有一整季很難被拿出先發的理由。');}else card('info','方法不是複製','你照著別人的節奏揮，卻忘了自己的好球帶。明年得重新拆開。');done();})},
-      {t:'還是追求能決定比分的力量',s:`${ABL[S.pos==='P'?'vel':'pow']} +1｜疲勞 +5`,f:()=>{addAb(S.pos==='P'?'vel':'pow',1);S.dev.fatigue=clamp(S.dev.fatigue+5,0,50);done();}},
+      {t:`把 ${ABL[key]} 做成每天都能帶上場的武器`,main:true,s:'D20 技術判定｜成功解鎖年代成就',f:()=>d20Check({title:'數字不需要翻譯',label:ABL[key],score:S.ab[key],dc:14,bonus:p.bonus,edge:p.edge,stakes:S.pos==='P'?'打者開始更重視每一顆可碰到的球；你得把邊角控得更細。':'不是追 262。是證明不靠同一種身材，也能每天改變比賽。'},r=>{if(r.success){addSeasonMomentum(r.strong?3:2);unlockAchievement('us_262',r.strong?'球探報告把「亞洲型球員」刪掉，改寫成你的名字。':'沒有紀錄，只有一整季很難被拿出先發的理由。');}else card('info','方法不是複製','你照著別人的節奏揮，卻忘了自己的好球帶。明年得重新拆開。');done();})},
+      {t:'還是追求能決定比分的力量',s:'本季狀態 +1｜疲勞 +5',f:()=>{addSeasonMomentum(1);S.dev.fatigue=clamp(S.dev.fatigue+5,0,50);done();}},
       {t:p.index>=2?'告訴年輕球員：別只學一種成功':'把剪報留在置物櫃',s:'洞察 +2、教練信任 +2',f:()=>{improveMind('insight',2);S.dev.trust+=2;unlockAchievement('us_262','你沒有追那個數字，只把可走的路多留一條。');done();}}
     ]);
   };
@@ -2021,12 +2035,13 @@ function injStatLoss(big){
 }
 function amateurSeason(){
   if(S.seasonFactor===0){ card('bad','','整季只能在場邊看著隊友比賽。');
-    S.log.push({y:S.year,age:S.age,tm:S.team||stageLabel(),line:'傷缺全季', inj:true}); nextStep(); return; }
+    S.pendStat=0; S.log.push({y:S.year,age:S.age,tm:S.team||stageLabel(),line:'傷缺全季', inj:true}); nextStep(); return; }
   const cups=S.stage==='HS'?hsCupsForYear(S.year):S.stage==='U'?uCupsForYear(S.year):['成棒甲組春季聯賽','成棒甲組秋季聯賽'];
   const thr=S.stage==='HS'?[52,46,40,34,28]:[60,54,48,42,36];
   let gain=0,lines=[],plain=[];
+  const seasonBoost=clamp(S.pendStat||0,0,8); /* 春訓／年代事件狀態只幫助當年大賽，不帶進未來職業球季 */
   const tB=S.stage==='HS'?({1:6,2:0,3:-6})[S.hsTier||2]:0; /* 高中隱藏強度分級 */
-  cups.forEach(c=>{ const pw=ovr()+tB+ri(-8,8);
+  cups.forEach(c=>{ const pw=ovr()+tB+seasonBoost+ri(-8,8);
     const i=pw>=thr[0]?0:pw>=thr[1]?1:pw>=thr[2]?2:pw>=thr[3]?3:pw>=thr[4]?4:5;
     const rk=['冠軍','亞軍','四強','八強','十六強','預賽出局'][i];
     const pts=[7,5,4,3,2,1][i]+Math.floor(ovr()/22);
@@ -2034,6 +2049,7 @@ function amateurSeason(){
     if(S.stage==='U'&&rk==='冠軍'&&!S.traits.academy){ S.traits.academy=true;
       card('gold','隱藏屬性解鎖：學院派','大學殿堂的科學化訓練與防護打下扎實基礎——<b class="hl">25 歲前受傷率 −5%、季初擲骰期望值提升</b>。'); }
     if(i===0)S.honors.push(`${S.year} ${c}冠軍`); });
+  S.pendStat=0;
   S.pool+=gain;
   S.log.push({y:S.year,age:S.age,tm:S.team||stageLabel(),line:plain.join('、'), inj:false});
   card('','年度大賽',lines.join('<br>')+`<div class="statline">獲得能力點 ${gain} 點，季末統一分配。能力越高，大賽收穫越多。</div>`);
@@ -3006,7 +3022,7 @@ function retireScene(tiers){
     `第一年投票就披上名人堂金袍——你不只是進了殿堂，你<b class="hl">定義了一個時代</b>。這個名字，會被寫進${S.legendLeague||''}的歷史課本。`); }
 }
 function endGame(reason){
-  S.done=true; actClear();
+  S.done=true; SETTLEMENT_SCROLL_LOCK=true; actClear();
   divider('生涯終幕');
   card('info','引退',reason);
   tlNote(5,'引退'); careerTimelineCard();
@@ -3193,11 +3209,9 @@ function endGame(reason){
   choose('',[
     {t:'⚾ 開啟新的人生（新種子）',main:true,f:()=>{location.href=location.pathname;}},
     {t:'用同一個種子重來',s:'seed: '+SEED,f:()=>{location.href=location.pathname+'?seed='+SEED;}}]);
-  /* 結算定錨:蓋過預設的捲到底,改捲到「生涯終幕」開頭,玩家從結算第一行開始看 */
-  setTimeout(()=>{ try{
-    const heads=document.querySelectorAll('.yr-head');
-    for(const h of heads){ if(h.textContent==='生涯終幕'){ h.scrollIntoView({behavior:'auto',block:'start'}); break; } }
-  }catch(e){} }, 250);
+  /* 結算期間鎖住所有「捲到底」要求；同步定錨後，下一幀才解鎖，畫面只定位一次。 */
+  scrollSettlementStart();
+  try{requestAnimationFrame(()=>{SETTLEMENT_SCROLL_LOCK=false;});}catch(e){SETTLEMENT_SCROLL_LOCK=false;}
 }
 /* 結算圖（Canvas 產生 PNG，可長按儲存或自動下載） */
 function shareImage(evals,out){

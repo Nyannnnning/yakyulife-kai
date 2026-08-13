@@ -126,7 +126,7 @@ assert.deepEqual(
   'career tier thresholds changed unexpectedly',
 );
 
-for (const name of ['newState', 'ovr', 'simSeason', 'injuryProb', 'startYear', 'phaseHistory', 'historyCollapse1999', 'resolveCollapse1999', 'phaseOverseasHistory', 'overseasEventFor', 'playerStanding', 'unlockAchievement', 'achievementScore', 'declineDrugFlow', 'declineDrugTemptation', 'd20Check', 'annualDevelopmentPlan', 'developmentSeasonReview', 'intlEventForYear', 'intlSelectionProfile', 'maybeBeefNoodleReturn', 'phaseEnd', 'movement', 'endGame']) {
+for (const name of ['newState', 'ovr', 'simSeason', 'injuryProb', 'startYear', 'phaseHistory', 'historyCollapse1999', 'resolveCollapse1999', 'phaseOverseasHistory', 'overseasEventFor', 'playerStanding', 'unlockAchievement', 'achievementScore', 'addSeasonMomentum', 'declineDrugFlow', 'declineDrugTemptation', 'd20Check', 'annualDevelopmentPlan', 'developmentSeasonReview', 'intlEventForYear', 'intlSelectionProfile', 'maybeBeefNoodleReturn', 'phaseEnd', 'movement', 'scrollSettlementStart', 'endGame']) {
   assert.equal(evaluate(`typeof ${name}`), 'function', `missing core function ${name}`);
 }
 
@@ -144,6 +144,11 @@ assert.deepEqual(Array.from(evaluate(`(() => {
   stepQ = [() => {}]; amateurSeason();
   return [highSchoolLogs, S.log.length];
 })()`)), [1, 1], 'high-school and university seasons must finish with era-specific tournaments');
+assert.equal(evaluate(`(() => {
+  seedInit('amateur-momentum'); S = newState('當季狀態測試', 'IF', null);
+  S.stage='HS'; S.year=1990; S.age=16; S.seasonFactor=1; S.pendStat=5;
+  stepQ=[()=>{}]; amateurSeason(); return S.pendStat;
+})()`), 0, 'temporary amateur momentum must be consumed in the same season');
 
 assert.equal(evaluate(`(() => { seedInit('era-start'); S = newState('測試球員', 'IF', null); return S.year; })()`), 1990, 'career must start in 1990');
 assert.deepEqual(Array.from(evaluate('cpblTeamsForYear(1990)')), ['兄弟巨象', '府城雄獅', '北城赤龍', '首都猛虎'], '1990 founding teams are out of sync');
@@ -271,6 +276,33 @@ assert.equal(evaluate(`(() => {
   return shown&&finished&&S.org==='MiLB'&&S.lv==='MLB'&&!S.traits.glass&&S.achievements.includes('beef_noodle_return');
 })()`), true, 'the rare beef-noodle injury comeback route is not playable');
 
+assert.equal((game.match(/S\.pool\s*\+=/g) || []).length, 3, 'only the original tournament, phoenix, and international rewards may grant permanent pool points');
+assert.equal((game.match(/S\.pool\+\+/g) || []).length, 0, 'added story events must not silently add permanent pool points');
+assert.match(game, /r<0\.35\?3:r<0\.75\?4:r<0\.95\?5:6/, 'the original-author training-dice distribution changed');
+assert.match(game, /S\.six>=5&&!S\.traits\.genius&&S\.age<22/, 'the original-author genius threshold changed');
+assert.match(game, /\[7,5,4,3,2,1\]\[i\]\+Math\.floor\(ovr\(\)\/22\)/, 'the original-author amateur tournament rewards changed');
+assert.doesNotMatch(evaluate('annualDevelopmentPlan.toString()'), /addAb\(/, 'the added annual plan must not stack permanent growth on top of the original training system');
+assert.doesNotMatch(evaluate('developmentSeasonReview.toString()'), /addAb\(/, 'the added season review must not stack permanent growth on top of the original training system');
+assert.deepEqual(Array.from(evaluate(`(() => {
+  S=newState('養成測試','P',null);S.dev.fatigue=20;S.tmpInj=0;const before=S.ab.sta;
+  $('act').children=[];annualDevelopmentPlan(()=>{});const body=$('act').children[1];$('act').children=[];body.onclick();
+  return [S.ab.sta===before,S.dev.plan,S.dev.fatigue,S.tmpInj];
+})()`)), [true,'body',5,-5], 'body-care planning must protect health without creating extra permanent ability points');
+assert.deepEqual(Array.from(evaluate(`(() => {
+  S=newState('回顧測試','P',null);S.stage='HS';S.seasonFactor=1;S.dev.plan='skill';S.dev.focus='vel';S.dev.spring=2;S.dev.trust=0;
+  const before=S.ab.vel;developmentSeasonReview();return [S.ab.vel===before,S.dev.trust];
+})()`)), [true,1], 'season review must reward trust, not extra permanent ability points');
+
+assert.deepEqual(Array.from(evaluate(`(() => {
+  const oldRAF=requestAnimationFrame,oldScroll=window.scrollTo,q=[],scrolls=[];
+  requestAnimationFrame=cb=>{q.push(cb);};window.scrollTo=(...args)=>{scrolls.push(args);};
+  S=newState('結算測試','IF',null);S.stage='AMA';S.age=24;S.year=1998;
+  card('info','結算前最後一張卡','');endGame('測試引退。');const queued=q.length;
+  while(q.length)q.shift()();
+  const result=[S.done,scrolls.length,queued>=2,SETTLEMENT_SCROLL_LOCK===false];
+  requestAnimationFrame=oldRAF;window.scrollTo=oldScroll;return result;
+})()`)), [true,0,true,true], 'career settlement must cancel queued bottom-scroll requests and never jump away');
+
 for (const position of ['P', 'C', 'IF', 'OF']) {
   const repeatable = evaluate(`(() => {
     seedInit('repeatable-${position}');
@@ -318,4 +350,5 @@ console.log('- playable voluntary 1996 dark-route entry');
 console.log('- Japan/US historical calendars and four-level player standing');
 console.log('- historically timed 1994 strike and 2003/2004 MLB drug-testing consequences');
 console.log('- overseas achievements, negative career marks, decline-era PED route, and rare beef-noodle comeback');
+console.log('- original-author permanent-growth curve and stable career settlement scrolling');
 console.log('- package version and WIKI synchronization');
